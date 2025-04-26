@@ -31,19 +31,26 @@
 </nav></header><main><h1>Syllabus</h1>
 
   <p>
-  This course aims to teach you how to write fast code for the specialized hardware and accelerators proliferating in modern computers. 
+  This course aims to teach you how to write fast code for parallel, distributed computers and specialized hardware accelerators. 
   It is a spiritual follow-on to <a href="https://software-performance-engineering.github.io/spring25/">Software Performance Engineering (SPE)</a>, 
   where we graduate from mainstream CPUs to things like GPUs. 
-  (SPE or similar low-level programming, performance analysis, computer architecture, and performance optimization experience is expected as a prerequisite.)
+  SPE or similar low-level programming, performance analysis, computer architecture, and performance optimization experience is expected as a prerequisite.
   </p>
 
 <p>Key things we expect you to learn include:</p>
 <ul>
 <li>
-<p><strong>Why do accelerators like GPUs look the way they do?</strong> We will both motivate and explain key architectural issues patterns like SIMD, multithreading, latency hiding, memory systems, matrix units, and spatial architectures (FPGAs/CGRAs), and see how similar ideas manifest in everything from multicore CPUs, to GPUs, TPUs, IPUs, and DSPs.</p>
+  <p><strong>Why do parallel accelerators like GPUs look the way they do?</strong> 
+    We will both motivate and explain key architectural issues like SIMD, multithreading, 
+    latency hiding, memory systems, matrix units, and spatial architectures (FPGAs/CGRAs), 
+    and see how similar ideas manifest in everything from multicore CPUs, to GPUs, TPUs, IPUs, and DSPs.
+  </p>
 </li>
 <li>
-<p><strong>How can we program them for high performance?</strong> The course emphasizes developing practical experience writing &amp; optimizing code on modern accelerators (mostly CUDA on NVIDIA GPUs), and how the major architectural ideas manifest in how we program them.</p>
+  <p><strong>How can we program them for high performance?</strong> 
+    The course emphasizes developing practical experience writing &amp; optimizing code on modern accelerators (mostly CUDA on NVIDIA GPUs), 
+    and how the major architectural ideas manifest in how we program them.
+  </p>
 </li>
 <li>
 <p><strong>How to reason about accelerator performance from first principles.</strong></p>
@@ -60,20 +67,23 @@ Topics:
 <li> <p> Domain-Specific Programming Systems </p> </li>
 <li> <p> FPGA Acceleration & Storage </p> </li>
 <li> <p> Machine Learning Systems </p> </li>
+<li> <p> Message Passing Interface (MPI) and Multi-GPU </p> </li>
 </ul>
 
-
+<!---
 <p>
 The course is brand new, experimental, and under active development this term; 
 you should expect rough edges. But we are excited to have you along on the journey with us, 
 and are eager share what we know while also learning together with you!
 </p>
+<li>30% paper presentations (3 * 10%)</li>
+--->
 
 <h2>Grading</h2>
 <p>The overall course grade comprises:</p>
 <ul>
-<li>50% lab assignments (5 * 10%)</li>
-<li>45% paper presentations (3 * 15%)</li>
+<li>80% lab assignments (5 * 10%)</li>
+<li>15% paper reading (5 * 3%)</li>
 <li>5% participation (primarily live lab attendance)</li>
 </ul>
 

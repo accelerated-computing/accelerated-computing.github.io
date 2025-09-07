@@ -1,34 +1,45 @@
-<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>6.S894</title><base href="/fall24/labs/lab6/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>6.S894</title><base href="/spring26/labs/lab6/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
     font-family: "Tex Gyre Heros";
-    src: url("/fall24/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
     font-weight: regular;
     font-style: regular;
 }
 @font-face {
     font-family: "Tex Gyre Heros";
-    src: url("/fall24/assets/font/tex-gyre-heros/texgyreheros-bold.otf") format("opentype");
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bold.otf") format("opentype");
     font-weight: bold;
     font-style: regular;
 }
 @font-face {
     font-family: "Tex Gyre Heros";
-    src: url("/fall24/assets/font/tex-gyre-heros/texgyreheros-italic.otf") format("opentype");
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-italic.otf") format("opentype");
     font-weight: regular;
     font-style: italic;
 }
 @font-face {
     font-family: "Tex Gyre Heros";
-    src: url("/fall24/assets/font/tex-gyre-heros/texgyreheros-bolditalic.otf") format("opentype");
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bolditalic.otf") format("opentype");
     font-weight: bold;
     font-style: italic;
-}</style><link href="/fall24/assets/main.css" rel="stylesheet"><link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet"><link href="/fall24/assets/favicon.png" rel="icon" type="image/png"></head><body><header><nav><h1><a href="/fall24/">6.S894</a></h1>
-<p><a href="/fall24/calendar">Calendar</a></p>
-<p><a href="/fall24/labs">Labs</a></p>
-<p><a href="/fall24/syllabus">Syllabus</a></p>
-<p><a href="/fall24/resources">Resources</a></p>
-<p><a href="/fall24/contact">Contact</a></p>
-<p><a href="/fall24/piazza">Piazza</a></p>
-</nav></header><main><h1>Lab 6: Matrix Multiply – Tensor Cores</h1>
+}</style><link href="/spring26/assets/main.css" rel="stylesheet">
+<link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet">
+<link href="/spring26/assets/favicon.png" rel="icon" type="image/png">
+</head>
+
+<body><header><nav>
+<h1><a href="/spring26/">Home</a></h1>
+<p><a href="/spring26/calendar">Calendar</a></p>
+<p><a href="/spring26/labs">Labs</a></p>
+<p><a href="/spring26/syllabus">Syllabus</a></p>
+<p><a href="/spring26/resources">Resources</a></p>
+<p><a href="/spring26/contact">Contact</a></p>
+<p><a href="/spring26/piazza">Piazza</a></p>
+</nav></header>
+
+<main>
+
+<h1>Lab 6: Matrix Multiply – Tensor Cores</h1>
+
 <h2>Prologue: Logistics</h2>
 <h3>Due Dates</h3>
 <p>For this lab, you’ll be turning in the following deliverables:</p>
@@ -50,7 +61,7 @@
 </blockquote>
 <h2>Introduction</h2>
 <h3>Goals for This Lab</h3>
-<p>So far in our exploration of matrix multiplication, we’ve focused primarily on optimizing <strong>data movement</strong> (<a href="/fall24/labs/lab4">Lab 4</a>) and <strong>work partitioning</strong> (<a href="/fall24/labs/lab5">Lab 5</a>). As we’ve worked to reduce bottlenecks along those dimensions, the run times of our implementations have increasingly become dominated by the cost of the <strong>floating point computations</strong> in our kernels’ innermost loops. Up until now, we’ve been implementing those core floating point computations using <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-fma"><strong>fused multiply-add (FMA)</strong></a> instructions. However, we can do better: modern NVIDIA GPUs support so-called <a href="https://www.nvidia.com/en-us/data-center/tensor-cores/">“<strong>tensor core</strong>”</a> instructions, which are designed specifically to accelerate matrix multiplication workloads. In this third and final matrix multiplication lab, we’ll be looking at how to use those tensor core instructions to speed up our kernels.</p>
+<p>So far in our exploration of matrix multiplication, we’ve focused primarily on optimizing <strong>data movement</strong> (<a href="/spring26/labs/lab4">Lab 4</a>) and <strong>work partitioning</strong> (<a href="/spring26/labs/lab5">Lab 5</a>). As we’ve worked to reduce bottlenecks along those dimensions, the run times of our implementations have increasingly become dominated by the cost of the <strong>floating point computations</strong> in our kernels’ innermost loops. Up until now, we’ve been implementing those core floating point computations using <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/#floating-point-instructions-fma"><strong>fused multiply-add (FMA)</strong></a> instructions. However, we can do better: modern NVIDIA GPUs support so-called <a href="https://www.nvidia.com/en-us/data-center/tensor-cores/">“<strong>tensor core</strong>”</a> instructions, which are designed specifically to accelerate matrix multiplication workloads. In this third and final matrix multiplication lab, we’ll be looking at how to use those tensor core instructions to speed up our kernels.</p>
 <p>The tensor core instructions we’ll be using in this lab aren’t exposed by default in the CUDA C++ language, so we’ll be accessing them via <a href="https://docs.nvidia.com/cuda/inline-ptx-assembly/index.html"><strong>inline PTX assembly</strong></a>.<sup class="footnote-reference"><a href="#cutlass">1</a></sup> Since we haven’t worked with inline PTX before, this lab will walk through how to make use of tensor core instructions step-by-step:</p>
 <ol>
 <li>
@@ -244,7 +255,7 @@
 = 38.34 TFLOP/s
 </code></pre>
 <blockquote>
-<p><strong>Question 3 for final write-up:</strong> For <strong>each of the problem sizes</strong> in this lab, walk through the following analysis (you may find it helpful to reuse some of your calculations from <a href="/fall24/labs/lab5">Lab 5</a> Question 2):</p>
+<p><strong>Question 3 for final write-up:</strong> For <strong>each of the problem sizes</strong> in this lab, walk through the following analysis (you may find it helpful to reuse some of your calculations from <a href="/spring26/labs/lab5">Lab 5</a> Question 2):</p>
 <ol>
 <li>
 <p>Considering the total number of FLOPs required to process this problem size, what is the fastest we could process this problem size if <strong>tensor core throughput</strong> were the only constraint?</p>
@@ -385,6 +396,7 @@
 <div class="footnote-definition" id="cublas_fp32"><sup class="footnote-definition-label">5</sup>
 <p>We make sure the cuBLAS kernels we’re calling won’t use tensor cores by explicitly requesting matrix multiplies in full FP32 precision as opposed to TF32 precision.</p>
 </div>
-</main><footer><p><a href="https://mit.edu">Massachusetts Institute of Technology</a> —
-<a href="https://www.eecs.mit.edu">Department of Electrical Engineering and Computer Science</a></p>
-</footer></body></html>
+
+</main>
+</body>
+</html>

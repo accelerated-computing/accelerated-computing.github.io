@@ -1,33 +1,38 @@
-<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>6.S894</title><base href="/fall24/labs/lab7/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>Accelerated-Computing</title>
+<base href="/spring26/labs/lab7/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
     font-family: "Tex Gyre Heros";
-    src: url("/fall24/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
     font-weight: regular;
     font-style: regular;
 }
 @font-face {
     font-family: "Tex Gyre Heros";
-    src: url("/fall24/assets/font/tex-gyre-heros/texgyreheros-bold.otf") format("opentype");
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bold.otf") format("opentype");
     font-weight: bold;
     font-style: regular;
 }
 @font-face {
     font-family: "Tex Gyre Heros";
-    src: url("/fall24/assets/font/tex-gyre-heros/texgyreheros-italic.otf") format("opentype");
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-italic.otf") format("opentype");
     font-weight: regular;
     font-style: italic;
 }
 @font-face {
     font-family: "Tex Gyre Heros";
-    src: url("/fall24/assets/font/tex-gyre-heros/texgyreheros-bolditalic.otf") format("opentype");
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bolditalic.otf") format("opentype");
     font-weight: bold;
     font-style: italic;
-}</style><link href="/fall24/assets/main.css" rel="stylesheet"><link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet"><link href="/fall24/assets/favicon.png" rel="icon" type="image/png"></head><body><header><nav><h1><a href="/fall24/">6.S894</a></h1>
-<p><a href="/fall24/calendar">Calendar</a></p>
-<p><a href="/fall24/labs">Labs</a></p>
-<p><a href="/fall24/syllabus">Syllabus</a></p>
-<p><a href="/fall24/resources">Resources</a></p>
-<p><a href="/fall24/contact">Contact</a></p>
-<p><a href="/fall24/piazza">Piazza</a></p>
+}</style>
+<link href="/spring26/assets/main.css" rel="stylesheet"><link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet">
+<link href="/spring26/assets/favicon.png" rel="icon" type="image/png">
+</head>
+<body><header><nav><h1><a href="/spring26/">Home</a></h1>
+<p><a href="/spring26/calendar">Calendar</a></p>
+<p><a href="/spring26/labs">Labs</a></p>
+<p><a href="/spring26/syllabus">Syllabus</a></p>
+<p><a href="/spring26/resources">Resources</a></p>
+<p><a href="/spring26/contact">Contact</a></p>
+<p><a href="/spring26/piazza">Piazza</a></p>
 </nav></header><main><h1>Lab 7: Run-Length Compression</h1>
 <h2>Prologue: Logistics</h2>
 <h3>Due Dates</h3>
@@ -57,13 +62,13 @@
 <p>So far in this course, we’ve only looked at workloads with so-called “<strong>regular</strong>” data access patterns, in which data dependencies were predictable and consistent across different parts of the computation:</p>
 <ul>
 <li>
-<p>In Mandelbrot (<a href="/fall24/labs/lab1">Lab 1</a>, <a href="/fall24/labs/lab2">2</a>), each pixel lived at a fixed position in the image, which was known before we started computing that pixel’s value.</p>
+<p>In Mandelbrot (<a href="/spring26/labs/lab1">Lab 1</a>, <a href="/spring26/labs/lab2">2</a>), each pixel lived at a fixed position in the image, which was known before we started computing that pixel’s value.</p>
 </li>
 <li>
-<p>In our wave simulation (<a href="/fall24/labs/lab3">Lab 3</a>), every grid cell lived at a fixed position in the <code>u</code> array, and updating each cell only required looking at its immediate neighbors in a fixed pattern.</p>
+<p>In our wave simulation (<a href="/spring26/labs/lab3">Lab 3</a>), every grid cell lived at a fixed position in the <code>u</code> array, and updating each cell only required looking at its immediate neighbors in a fixed pattern.</p>
 </li>
 <li>
-<p>In matrix multiply (<a href="/fall24/labs/lab4">Lab 4</a>, <a href="/fall24/labs/lab5">5</a>, <a href="/fall24/labs/lab6">6</a>), every element of the <em>C</em> matrix depended only on a fixed set of indices in the <em>A</em> and <em>B</em> matrices, and there was a fixed pattern determining which elements of <em>A</em> were to be multiplied with which elements of <em>B</em>.</p>
+<p>In matrix multiply (<a href="/spring26/labs/lab4">Lab 4</a>, <a href="/spring26/labs/lab5">5</a>, <a href="/spring26/labs/lab6">6</a>), every element of the <em>C</em> matrix depended only on a fixed set of indices in the <em>A</em> and <em>B</em> matrices, and there was a fixed pattern determining which elements of <em>A</em> were to be multiplied with which elements of <em>B</em>.</p>
 </li>
 </ul>
 <p>In this lab, we’ll start looking at how GPUs can be used to carry out computations requiring <strong>irregular</strong> memory access patterns, where the locations accessed by different parts of the computation depend on details of the input data which can only be determined dynamically.</p>

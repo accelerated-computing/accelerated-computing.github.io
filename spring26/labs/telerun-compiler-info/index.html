@@ -1,8 +1,6 @@
-<!DOCTYPE html><html lang="en-us">
-<head>
-<meta charset="utf-8">
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8">
 <title>Home</title>
-<base href="/spring26/labs/">
+<base href="/spring26/labs/telerun-compiler-info/">
 <meta content="width=device-width, initial-scale=1" name="viewport">
 <style>@font-face {
     font-family: "Tex Gyre Heros";
@@ -27,58 +25,31 @@
     src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bolditalic.otf") format("opentype");
     font-weight: bold;
     font-style: italic;
-}</style>
+}
+</style>
 <link href="/spring26/assets/main.css" rel="stylesheet">
 <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet">
 <link href="/spring26/assets/favicon.png" rel="icon" type="image/png">
+
 </head>
-
 <body>
-
 <header>
 <nav>
 <h1><a href="/spring26/">Home</a></h1>
 <p><a href="/spring26/calendar">Calendar</a></p>
 <p><a href="/spring26/labs">Labs</a></p>
+<p><a href="/spring26/lectures">Lectures</a></p>
 <p><a href="/spring26/syllabus">Syllabus</a></p>
 <p><a href="/spring26/resources">Resources</a></p>
 <p><a href="/spring26/contact">Contact</a></p>
 <p><a href="/spring26/piazza">Piazza</a></p>
-</nav>
-</header>
-
-<main>
-
-<h1>Assignments</h1>
-
-<h2>Labs</h2>
-<ul>
-<li> <p> <a href="/spring26/labs/lab1">Lab 1</a> – SIMD Mandelbrot</p> </li>
-<li> <p> <a href="/spring26/labs/lab2">Lab 2</a> – Massively-Parallel Mandelbrot</p> </li>
-<li> <p> <a href="/spring26/labs/lab3">Lab 3</a> – Wave Simulation</p> </li>
-<li> <p> <a href="/spring26/labs/lab4">Lab 4</a> – Matrix Multiply – Tiling and Reuse</p> </li>
-<li> <p> <a href="/spring26/labs/lab5">Lab 5</a> – Matrix Multiply – Improved Scheduling</p> </li>
-<li> <p> <a href="/spring26/labs/lab6">Lab 6</a> – Matrix Multiply – Tensor Cores</p> </li>
-<li> <p> <a href="/spring26/labs/lab7">Lab 7</a> – Run-Length Compression</p> </li>
-<li> <p> <a href="/spring26/labs/lab8">Lab 8</a> – One Million Circles [bonus]</p> </li>
-</ul>
-
-<h2>Telerun Information</h2>
-<ul>
-<li><a href="/spring26/labs/telerun-compiler-info">Telerun compiler information</a></li>
-</ul>
-
-<!-- 
-<h2>Paper Reading and Presentation</h2>
-<p>
-Pick 3 from the 5 categories provided in <a href="">the paper list</a>, 
-and then pick one paper from each of the 3 selected categories.
-</p>
-<p>
-Fill <a href="https://docs.google.com/document/d/1niqd8EbwVKCJpbKhyt4Tw1pK7CAuw_CE3vF_xKYgiVM/edit?usp=sharing">this review form</a> for each paper.
-Submit the form and your slides one day before your presentation.
-</p>
--->
-</main>
-</body>
-</html>
+</nav></header><main><h1>Telerun Compiler Information</h1>
+<h2>CPU Compiler Flags</h2>
+<p>All CPU jobs on Telerun are run on AMD Ryzen 7 7700 Zen 4 CPUs. We compile your cpp files with:</p>
+<p><code>clang++ -O3 --ffast-math -march=x86-64-v4 -o</code></p>
+<h2>GPU Compiler Flags</h2>
+<p>GPU jobs on Telerun are run on NVIDIA RTX 4000 Ada GPUs, compiled on CUDA 12.8 using:</p>
+<p><code>nvcc -O3 --use_fast_math -gencode arch=compute_89,code=[sm_89,compute_89] --expt-relaxed-constexpr --std=c++20</code></p>
+</main><footer><p><a href="https://mit.edu">Massachusetts Institute of Technology</a> —
+<a href="https://www.eecs.mit.edu">Department of Electrical Engineering and Computer Science</a> | <a href="https://accessibility.mit.edu">Accessibility</a></p>
+</footer></body></html>

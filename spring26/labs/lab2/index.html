@@ -1,10 +1,4 @@
-<!DOCTYPE html><html lang="en-us">
-<head>
-<meta charset="utf-8">
-<title>Home</title>
-<base href="/spring26/labs/lab2/">
-<meta content="width=device-width, initial-scale=1" name="viewport">
-<style>@font-face {
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>Home</title><base href="/spring26/labs/lab2/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
     font-family: "Tex Gyre Heros";
     src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
     font-weight: regular;
@@ -29,42 +23,35 @@
     font-style: italic;
 }</style><link href="/spring26/assets/main.css" rel="stylesheet">
 <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet">
-<link href="/spring26/assets/favicon.png" rel="icon" type="image/png"></head>
-<body>
-<header>
-<nav>
+<link href="/spring26/assets/favicon.png" rel="icon" type="image/png">
+</head><body><header><nav>
 <h1><a href="/spring26/">Home</a></h1>
 <p><a href="/spring26/calendar">Calendar</a></p>
 <p><a href="/spring26/labs">Labs</a></p>
+<p><a href="/spring26/lectures">Lectures</a></p>
 <p><a href="/spring26/syllabus">Syllabus</a></p>
 <p><a href="/spring26/resources">Resources</a></p>
 <p><a href="/spring26/contact">Contact</a></p>
 <p><a href="/spring26/piazza">Piazza</a></p>
-</nav></header>
-
-<main>
-
-<h1>Lab 2: Massively-Parallel Mandelbrot</h1>
-
+</nav></header><main><h1>Lab 2: Massively-Parallel Mandelbrot</h1>
 <h2>Prologue: Logistics</h2>
 <h3>Due Dates</h3>
 <p>For this lab, you’ll be turning in the following deliverables:</p>
 <ul>
 <li>
-<p><strong>Checkpoint</strong>: Due Monday, September 16, 11:59pm</p>
+<p><strong>Checkpoint</strong>: Due Monday, September 15, 11:59pm. On the Gradescope assignment for the Lab 2 checkpoint, submit your answers to the prelab questions (Part 0 of the lab).</p>
 </li>
 <li>
-<p><strong>Final Submission</strong>: Due <em>Saturday</em>, September 21, 11:59pm <br> (due on Saturday to accomodate the <a href="https://registrar.mit.edu/calendar">student holiday on Friday</a>)</p>
+<p><strong>Final Submission</strong>: Due Saturday, September 20, 11:59pm. On the Gradescope assignments for Lab 2, submit your <strong>completed code</strong> for <code>mandelbrot_cpu_2.cpp</code> and <code>mandelbrot_gpu_2.cpp</code>, as well as a PDF writeup containing your answers to Questions 1 - 8 below, answering each question with roughly a sentence or two.</p>
 </li>
 </ul>
-<p>See the “Deliverables” section at the end of this document for more information on what you’ll be turning in.</p>
 <h3>Starter Code</h3>
 <p>You can get the starter code for this lab by cloning the <a href="https://github.com/accelerated-computing-class/lab2">lab repository</a>:</p>
 <pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">git</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> clone git@github.com:accelerated-computing-class/lab2.git</span>
 </span></pre>
 <h3>Changes to Starter Code vs Lab 1</h3>
 <p>For Lab 2, you should be aware that we’ve made a few changes to the reference implementation of the Mandelbrot algorithm in the starter code, relative to what was in the starter code for Lab 1.</p>
-<p>First of all, because of on one of the issues we discussed in last week’s live lab, the line <code>float y = w - x2 - y2 + cy;</code> is now <code>float y = w - (x2 + y2) + cy;</code>. This may seem like a trivial change, but it speeds up the algorithm by allowing the compiler to reuse the expression <code>x2 + y2</code> computed in the loop condition, and also slightly alters the algorithm’s output due to the (maddening) non-associativity of floating-point math.</p>
+<p>The line <code>float y = w - x2 - y2 + cy;</code> is now <code>float y = w - (x2 + y2) + cy;</code>. This may seem like a trivial change, but it speeds up the algorithm by allowing the compiler to reuse the expression <code>x2 + y2</code> computed in the loop condition, and also slightly alters the algorithm’s output due to the (maddening) non-associativity of floating-point math.</p>
 <p>Additionally, we’ve adjusted the parameters of the Mandelbrot image we’re generating to be more ambitious. The image is now:</p>
 <ul>
 <li>
@@ -77,7 +64,7 @@
 <p><strong>Zoomed in on a more interesting part of the Mandelbrot set.</strong> <br> (Check out the images in <code>./telerun-out</code> to see what it looks like!)</p>
 </li>
 </ul>
-<p>To control what part of the Mandelbrot set we’re zoomed in to, we’ve added three new constant definitions in the starter code: <code>window_zoom</code>, <code>window_x</code>, and <code>window_y</code>. If you copy any code you wrote for Lab 1 for use in this lab, you’ll need to adjust it to refer to these new constants instead of using the hard-coded window parameters we used in Lab 1.</p>
+<p>To control what part of the Mandelbrot set we’re zoomed in to, we’ve added three new constant definitions in the starter code: <code>window_zoom</code>, <code>window_x</code>, and <code>window_y</code>. If you copy any code you wrote for Lab 1 for use in this lab, you’ll need to refer to these new constants instead of using the hard-coded window parameters we used in Lab 1.</p>
 <h2>Introduction</h2>
 <h3>Goals for This Lab</h3>
 <p>In <a href="/spring26/labs/lab1">Lab 1</a>, we looked at ways of using <em>vector parallelism</em> to accelerate an algorithm for rendering the Mandelbrot fractal. We also promised that later we would look at ways to add more levels of parallelism. The time has come!</p>
@@ -93,15 +80,15 @@
 <p><strong>Multi-Threaded Parallelism:</strong> parallelizing execution of multiple instruction streams within a single physical core.</p>
 </li>
 </ol>
-<p>Just like we did in Lab 1, throughout this lab we’ll be focusing on the <strong>correspondences</strong> between the different levels of parallelism which exist in CPUs and GPUs. As we’ll see, the analogies between CPU and GPU hardware remain quite close even as we scale up our programs to start exploiting instruction-level, multi-core, and multi-threaded parallelism.</p>
-<p>In this lab, we’ll also finally start to see our GPU programs overtaking our CPU programs in performance, as we write programs which are able to use the GPU to its full potential.</p>
+<p>Just like we did in Lab 1, throughout this lab, we’ll be focusing on the <strong>correspondences</strong> between the different levels of parallelism which exist in CPUs and GPUs. As we’ll see, the analogies between CPU and GPU hardware remain quite close even as we scale up our programs to start exploiting instruction-level, multi-core, and multi-threaded parallelism.</p>
+<p>In this lab, as we write programs which are able to use the GPU to its full potential, we’ll also finally start to see our GPU programs overtaking our CPU programs in performance.</p>
 <h3>A Note on Terminology: What is a “Thread?” (And What is a “Warp?”)</h3>
 <p>Before we get into the details of the lab, we want to clarify some terminology which can become overloaded and confusing when talking about GPUs.</p>
 
 <p>As you might have guessed from the name of the special variable <code>threadIdx.x</code> in Lab 1, NVIDIA uses the word “thread” to refer to <em>a single instance of the program defined by your kernel</em>. But because the GPU executes all instructions in a SIMD fashion across 32 instances of your program at a time, what NVIDIA refers to as a “thread” is much closer to what we’d refer to as a <strong>vector lane</strong> on a CPU.</p>
 <p>By contrast, NVIDIA uses the term “<a href="https://en.wikipedia.org/wiki/Warp_and_weft">warp</a>” to refer to what we’d traditionally call a “thread”: a single stream of instructions which logically executes sequentially, and that instruction stream’s associated state (registers, etc.). Note that because all instructions executed on an NVIDIA GPU are executed in 32-wide SIMD fashion, a “warp” consists of 32 of the things-NVIDIA-calls-“threads”.</p>
-<p>For the purposes of this course, we will try to <strong>always</strong> explicitly use the term “<strong>CUDA thread</strong>” when referring to the things NVIDIA calls threads, and we encourage you to do the same during live lab, in write-ups, on Piazza, etc.</p>
-<p>When we talk about “threads” generically, as in the phrase “multi-threading,” you should understand that in the context of GPUs we’re referring to the thing that NVIDIA calls “warps.”</p>
+<p>For the purposes of this course, we will try to explicitly use the term “<strong>CUDA thread</strong>” when referring to the things NVIDIA calls threads, and we encourage you to do the same during live lab, in write-ups, on Piazza, etc.</p>
+<p>When we talk about “threads” generically — as in the phrase “multi-threading” — we’re referring to the thing that NVIDIA calls “warps.”</p>
 <p>We can summarize the situation in the following table of correspondences:</p>
 <div class="table-container"><table><thead><tr><th>GPU Concept</th><th>CPU Concept</th></tr></thead><tbody>
 <tr><td>CUDA Thread</td><td>Vector Lane</td></tr>
@@ -118,7 +105,7 @@
 <p>We show a schematic view of the CPU below:</p>
 <p><img src="images/cpu_schematic.svg" alt="CPU schematic" /></p>
 <h4>The GPU</h4>
-<p>The GPU we’re using for this lab is an <a href="https://www.techpowerup.com/gpu-specs/rtx-a4000.c3756">NVIDIA RTX A4000</a>, clocked at 1.56 GHz. Unlike the CPU, which consists of a flat array of cores, the processing elements on our GPU are organized into a two-level hierarchy. In NVIDIA’s terminology:</p>
+<p>The GPU we’re using for this lab is an <a href="https://www.techpowerup.com/gpu-specs/rtx-4000-ada-generation.c4171">NVIDIA RTX 4000 Ada</a>, clocked at 2.175 GHz. Unlike the CPU, which consists of a flat array of cores, the processing elements on our GPU are organized into a two-level hierarchy. In NVIDIA’s terminology:</p>
 <ol>
 <li>
 <p>The GPU consists of <strong>48 <em>streaming multiprocessors</em> (SMs)</strong>.</p>
@@ -127,7 +114,7 @@
 <p>Each SM consists of <strong>4 <em>warp schedulers</em></strong>. <sup class="footnote-reference"><a href="#1">1</a></sup></p>
 </li>
 </ol>
-<p>For our purposes, we can regard each individual warp scheduler as <strong>analogous to a CPU core</strong>. Just like a CPU core, each warp scheduler can execute its own independent stream of vector instructions, and has its own register file, control logic, and functional units. In this lab, we’ll use the word “core” generically to refer to both CPU cores and to warp schedulers.</p>
+<p>For our purposes, we can regard each individual warp scheduler as <strong>analogous to a CPU core</strong>. Just like a CPU core, each warp scheduler can execute its own independent stream of vector instructions, and has its own register file, control logic, and functional units. Each cycle, the 4 warp schedulers can each issue an instruction for their respective warps, provided they are not waiting for an instruction to finish. In this lab, we’ll use the word “core” generically to refer to both CPU cores and to warp schedulers.</p>
 <p>If a warp scheduler is analogous to a CPU core, you may be wondering about the significance of the “SM” level of the hierarchy – why not just think of the GPU as a flat array of 192 warp schedulers? The answer lies in the memory system: the <strong>L1 cache</strong>, as well as some other memory resources, are <strong>shared at the level of an SM</strong>. The fact that the L1 cache is shared won’t be directly relevant for this lab, but it may be helpful for understanding why the concept of an “SM” exists at all.</p>
 <p>Similar to the cores on our CPU, each warp scheduler can manage multiple concurrent warps at a time. Specifically, each warp scheduler on our GPU supports <a href="https://en.wikipedia.org/wiki/Temporal_multithreading">fine-grained temporal multi-threading</a> between <strong>at most 12 concurrent warps</strong>. The warp scheduler can issue an instruction for at most one warp per cycle, and multi-cycle instructions from different warps can execute in parallel with each other as long as they don’t contend for the same shared hardware resources.</p>
 <p>Just like on the CPU, the scalar and vector GPU programs we wrote in Lab 1 made use of only a <strong>single</strong> warp scheduler, and ignored the other 191 (!) warp schedulers on the machine.</p>
@@ -137,9 +124,36 @@
 * **Max concurrent warps per warp scheduler:** 12 -->
 
 <p><img src="images/gpu_schematic.svg" alt="GPU schematic" /></p>
-<h2>Part 1: Instruction-Level Parallelism</h2>
-<p>In Lab 1, the programs we wrote each made use of only a <strong>single thread</strong>, running on a <strong>single core</strong>. Later in this lab, we’ll be scaling up our programs to make use of all the cores on our CPU and GPU. But first, we’ll look at a way that we can exploit <strong>more parallelism</strong> in our vector Mandelbrot program <strong>using just the single thread that we already have.</strong></p>
-<p>To find more opportunities for parallelism within our single thread, we’ll make use of what is known as <em><a href="https://en.wikipedia.org/wiki/Instruction-level_parallelism">instruction-level parallelism (ILP)</a></em>. Instruction-level parallelism refers to cases where a processor is able to exploit independence between instructions <strong>within one instruction stream</strong> in order to run them in parallel on different hardware resources.</p>
+<h2>Part 0 (Prelab): Instruction Latency of an FMA</h2>
+<p>In Lab 1, several of the Mandelbrot implementations made use of the <em>fused multiply-add</em> (FMA) instruction. Unlike performing a multiplication and an addition as two separate instructions, an FMA combines them into one: it multiplies one operand by another and then adds a third operand to the result, all in a single step. This not only reduces the total number of instructions executed by the program, but can also improve numerical precision.</p>
+<p>In this part, we will empirically study the instruction latency of a floating-point FMA on the GPU and explore how this latency influences the decisions made by the warp scheduler.</p>
+<blockquote>
+<p><strong>Deliverable:</strong> The GPU provides an <code>FFMA</code> instruction to perform fused multiply-add operations on floating-point values.
+To measure the latency of the <code>FFMA</code> instruction, write code in the <code>measure_fma_latency(..)</code> that produces an <code>FFMA</code> instruction during compilation.</p>
+</blockquote>
+<!-- ```c++
+// Measure latency of a single FMA by reading the GPU clock.
+asm volatile("mov.u64 %0, %%clock64;" : "=l"(start_time));
+
+/// <- your code here -> 
+(void) x;
+
+asm volatile("mov.u64 %0, %%clock64;" : "=l"(end_time));
+``` -->
+<p>You can use the <code>-s</code> flag with telerun to verify your code generates an <code>FFMA</code> instruction in the SASS output. Here’s an example <code>FFMA</code> instruction:</p>
+<pre><span class="highlight-source highlight-c++"><span class="highlight-comment highlight-block highlight-c"><span class="highlight-punctuation highlight-definition highlight-comment highlight-c">/*</span>0050<span class="highlight-punctuation highlight-definition highlight-comment highlight-c">*/</span></span>                   FFMA<span class="highlight-punctuation highlight-accessor highlight-dot highlight-c++">.</span><span class="highlight-variable highlight-other highlight-readwrite highlight-member highlight-c++">FTZ</span> R0<span class="highlight-punctuation highlight-separator highlight-c++">,</span> R0<span class="highlight-punctuation highlight-separator highlight-c++">,</span> R0<span class="highlight-punctuation highlight-separator highlight-c++">,</span> R0 <span class="highlight-punctuation highlight-terminator highlight-c++">;</span>     <span class="highlight-comment highlight-block highlight-c"><span class="highlight-punctuation highlight-definition highlight-comment highlight-c">/*</span> 0x0000000000007223 <span class="highlight-punctuation highlight-definition highlight-comment highlight-c">*/</span></span>
+                                                         <span class="highlight-comment highlight-block highlight-c"><span class="highlight-punctuation highlight-definition highlight-comment highlight-c">/*</span> 0x004fc80000010000 <span class="highlight-punctuation highlight-definition highlight-comment highlight-c">*/</span></span>
+</span></pre>
+<p>Running <code>fma_latency.cu</code> should print the latency of the instruction <code>FFMA</code> in cycles.</p>
+<pre><span class="highlight-text highlight-plain">    Latency of measure_fma_latency code snippet = &lt;REPORTED&gt; cycles 
+</span></pre>
+<p><strong>Helpful Tip:</strong>  To make the timing more stable, chain dependent FMA instructions so the compiler cannot reorder them. Finally, divide the total execution time by the number of operations to compute the average latency per instruction.</p>
+<blockquote>
+<p><strong>Prelab Question 1:</strong> What is the latency of an <code>FFMA</code> instruction?</p>
+</blockquote>
+<h2>Instruction-Level Parallelism</h2>
+<p>In practice, even though complex instructions like <code>FFMA</code> take multiple cycles to finish, modern processors do not stall waiting for each instruction to complete. Instead, they exploit  <em><a href="https://en.wikipedia.org/wiki/Instruction-level_parallelism">instruction-level parallelism</a></em> (ILP), which refers to cases where a processor exploits independence between instructions <strong>within one instruction stream</strong> in order to run them in parallel on different hardware resources.</p>
+<p>For example, using ILP, we can exploit <strong>more parallelism</strong> in our vector Mandelbrot program <strong>using just the single thread that we already have.</strong></p>
 <p>The exact microarchitectural details of when and how a core can exploit ILP differ between our CPU and GPU <sup class="footnote-reference"><a href="#2">2</a></sup>, but the implications for software performance engineering are similar on both platforms. In general, sections of code with <strong>sequential dependencies</strong> like the following will not be able to exploit ILP:</p>
 <pre><span class="highlight-source highlight-c++"><span class="highlight-comment highlight-line highlight-double-slash highlight-c"><span class="highlight-punctuation highlight-definition highlight-comment highlight-c">//</span> No ILP:
 </span><span class="highlight-storage highlight-type highlight-c">float</span> a0 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> <span class="highlight-comment highlight-block highlight-c"><span class="highlight-punctuation highlight-definition highlight-comment highlight-c">/*</span> ... <span class="highlight-punctuation highlight-definition highlight-comment highlight-c">*/</span></span><span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
@@ -154,17 +168,57 @@
 <span class="highlight-storage highlight-type highlight-c">float</span> b2 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> c2 <span class="highlight-keyword highlight-operator highlight-c">*</span> c2<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
 <span class="highlight-storage highlight-type highlight-c">float</span> b3 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> c3 <span class="highlight-keyword highlight-operator highlight-c">*</span> c3<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
 </span></pre>
-<p>Depending on the latency and throughput with which the processor can execute a given type of instruction, running multiple instructions in parallel is often necessary in order to drive the hardware at its peak throughput. For example, on our A4000 GPU, basic 32-bit floating point arithmetic instructions like multiplies and adds:</p>
-<ol>
-<li>
-<p>execute with a <strong>latency</strong> of <strong>4 cycles per instruction</strong>… <sup class="footnote-reference"><a href="#latency-source">3</a></sup></p>
-</li>
-<li>
-<p>but can execute with a peak <strong>throughput</strong> of <strong>1 instruction per cycle per warp scheduler</strong>. <sup class="footnote-reference"><a href="#throughput-source">4</a></sup></p>
-</li>
-</ol>
-<p>This means that to execute 32-bit floating point multiplies and adds at peak throughput, you need to have <strong>at least 4</strong> independent multiply or add instructions in flight <strong>simultaneously</strong> at any given time. You can think of e.g. the floating point multiplier as a pipeline with 4 stages, which can only run at its peak throughput if you’re able to keep each of those 4 pipeline stages busy processing a different instruction on each cycle.</p>
+<p>Depending on the latency and throughput with which the processor can execute a given type of instruction, running multiple instructions in parallel is often necessary in order to drive the hardware at its peak throughput.</p>
+<p>Let’s look how instruction-level parallelism plays out on our GPU.</p>
+<blockquote>
+<p><strong>Prelab Question 2:</strong>  In <code>fma-latency.cu</code>, complete the <code>fma_latency_interleaved</code> function using a sequence of explicitly interleaved FMA operations designed to exploit ILP. What latency do you observe while running this sequence of operations? Does the observed number contradict your observations from before?</p>
+</blockquote>
+<blockquote>
+<p><strong>Prelab Question 3:</strong>  While <code>fma_latency_interleaved</code> explicitly interleaves the instructions, write an analogous version in <code>fma_latency_no_interleaved</code> that executes the instructions without explicitly interleaving them (the program should <em>still</em> have ILP, but the source code should not explicitly expose it). Does <code>fma_latency_no_interleaved</code> run with the same latency as <code>fma_latency_interleave</code>?  Why, or why not?</p>
+</blockquote>
+<h2>Using ILP in a Simple Program</h2>
+<p>Now that we understand the latency of an <code>FFMA</code> instruction, let’s put it to use in a simple program. The file <code>warp_scheduler.cu</code> contains a simple GPU kernel that processes an input array by performing a sequence of FMAs on each element and storing the results in an output array.</p>
+<pre><span class="highlight-source highlight-c++"><span class="highlight-comment highlight-line highlight-double-slash highlight-c"><span class="highlight-punctuation highlight-definition highlight-comment highlight-c">//</span> Begin computing from the start of the tile allocated to the thread.
+</span><span class="highlight-keyword highlight-control highlight-c++">for</span> <span class="highlight-meta highlight-group highlight-c++"><span class="highlight-punctuation highlight-section highlight-group highlight-begin highlight-c++">(</span><span class="highlight-storage highlight-type highlight-c">int</span> i <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> <span class="highlight-constant highlight-numeric highlight-c++">0</span><span class="highlight-punctuation highlight-terminator highlight-c++">;</span> i <span class="highlight-keyword highlight-operator highlight-comparison highlight-c">&lt;</span> Tile<span class="highlight-punctuation highlight-terminator highlight-c++">;</span> <span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">+</span><span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">+</span>i<span class="highlight-punctuation highlight-section highlight-group highlight-end highlight-c++">)</span></span> <span class="highlight-meta highlight-block highlight-c++"><span class="highlight-punctuation highlight-section highlight-block highlight-begin highlight-c++">{</span>
+    <span class="highlight-storage highlight-type highlight-c">float</span> tmp <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> in<span class="highlight-meta highlight-brackets highlight-c++"><span class="highlight-punctuation highlight-section highlight-brackets highlight-begin highlight-c++">[</span>index <span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">+</span> i<span class="highlight-punctuation highlight-section highlight-brackets highlight-end highlight-c++">]</span></span><span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
+    <span class="highlight-comment highlight-line highlight-double-slash highlight-c"><span class="highlight-punctuation highlight-definition highlight-comment highlight-c">//</span> Repeat the FMA operation NumOps times
+</span><span class="highlight-meta highlight-preprocessor highlight-c++"><span class="highlight-keyword highlight-control highlight-import highlight-c++">#pragma</span> unroll
+</span>    <span class="highlight-keyword highlight-control highlight-c++">for</span> <span class="highlight-meta highlight-group highlight-c++"><span class="highlight-punctuation highlight-section highlight-group highlight-begin highlight-c++">(</span><span class="highlight-storage highlight-type highlight-c">int</span> op <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> <span class="highlight-constant highlight-numeric highlight-c++">0</span><span class="highlight-punctuation highlight-terminator highlight-c++">;</span> op <span class="highlight-keyword highlight-operator highlight-comparison highlight-c">&lt;</span> NumOps<span class="highlight-punctuation highlight-terminator highlight-c++">;</span> <span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">+</span><span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">+</span>op<span class="highlight-punctuation highlight-section highlight-group highlight-end highlight-c++">)</span></span> <span class="highlight-meta highlight-block highlight-c++"><span class="highlight-punctuation highlight-section highlight-block highlight-begin highlight-c++">{</span>
+        tmp <span class="highlight-keyword highlight-operator highlight-assignment highlight-augmented highlight-c">+=</span> tmp <span class="highlight-keyword highlight-operator highlight-c">*</span> <span class="highlight-constant highlight-numeric highlight-c++">3.0f</span><span class="highlight-punctuation highlight-terminator highlight-c++">;</span> <span class="highlight-comment highlight-line highlight-double-slash highlight-c"><span class="highlight-punctuation highlight-definition highlight-comment highlight-c">//</span> stage 1 work
+</span>    <span class="highlight-punctuation highlight-section highlight-block highlight-end highlight-c++">}</span></span>
+    out<span class="highlight-meta highlight-brackets highlight-c++"><span class="highlight-punctuation highlight-section highlight-brackets highlight-begin highlight-c++">[</span>index <span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">+</span> i<span class="highlight-punctuation highlight-section highlight-brackets highlight-end highlight-c++">]</span></span> <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> tmp<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
+<span class="highlight-punctuation highlight-section highlight-block highlight-end highlight-c++">}</span></span>
+</span></pre>
+<p>For this experiment, let’s express the launch parameters in terms of the total number of warps (or, what we call “threads”) used in the computation. Since each warp consists of 32 lanes, the total number of warps can be calculated with a simple formula:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mtext># Warps</mtext><mo>=</mo><mfrac><mrow><mtext># Blocks</mtext><mo>×</mo><mtext># Lanes per Block</mtext></mrow><mn>32</mn></mfrac></mrow><annotation encoding="application/x-tex">
+\text{\# Warps} = \frac{\text{\# Blocks} \times \text{\# Lanes per Block}}{32}
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord text"><span class="mord"># Warps</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.0574em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">32</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord"># Blocks</span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord text"><span class="mord"># Lanes per Block</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<p>The starter code provided in <code>warp_scheduler.cu</code> runs our kernel under different configurations to see how much of our machine’s peak throughput it achieves. In particular, across different runs, <code>warp_scheduler.cu</code> will launch the kernel while varying the numbers of warps. Importantly, the amount of work performed by each warp and each lane inside the warp will remain <em>exactly</em> the same across these runs. Running the file should produce output as follows:</p>
+<pre><span class="highlight-text highlight-plain">    # Warps,    # FLOPS
+    96,         3.48436e+12
+    192,        6.92671e+12
+    288,        1.04813e+13
+    384,        1.39468e+13
+    480,        1.70766e+13
+    576,        2.05939e+13
+    672,        2.39468e+13
+    768,        2.64575e+13
+    864,        1.59401e+13
+    960,        1.77052e+13
+</span></pre>
+<p>To plot this data, we provide a minimal script that you can run using the following command:</p>
+<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">python3</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> plot.py <span class="highlight-keyword highlight-operator highlight-assignment highlight-redirection highlight-shell">&lt;</span> <span class="highlight-keyword highlight-operator highlight-assignment highlight-redirection highlight-shell">&lt;</span>telerun-out<span class="highlight-keyword highlight-operator highlight-assignment highlight-redirection highlight-shell">&gt;</span>/<span class="highlight-keyword highlight-operator highlight-assignment highlight-redirection highlight-shell">&lt;</span>job-id<span class="highlight-keyword highlight-operator highlight-assignment highlight-redirection highlight-shell">&gt;</span>/execute-log.txt</span>
+</span></pre>
+<p>A curious pattern emerges in the data: even though the work/warp and work/lane remains constant across each run, launches with different numbers of warps achieve different fractions of the peak throughput.</p>
+<p><img src="images/fma_achieved_latency.svg" alt="FMA Latency" /></p>
+<blockquote>
+<p><strong>Prelab Question 4:</strong> When do you observe the benchmark hitting maximum throughput? Considering the latency of an FMA instruction, what may explain this behavior?
+<em>Remember: Our GPU has a total number of 48 * 4 warp schedulers (48 SM and 4 warp scheduler/SM).</em></p>
+</blockquote>
 
+
+<h2>Part 1: ILP in Mandelbrot</h2>
+<h3>Implementation: Increasing ILP on the CPU</h3>
 <p>Revisiting our Mandelbrot program, we can analyze its inner loop to see what kind of opportunities for ILP it exposes to the processor:</p>
 <pre><span class="highlight-source highlight-c++"><span class="highlight-keyword highlight-control highlight-c++">while</span> <span class="highlight-meta highlight-group highlight-c++"><span class="highlight-punctuation highlight-section highlight-group highlight-begin highlight-c++">(</span>x2 <span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">+</span> y2 <span class="highlight-keyword highlight-operator highlight-comparison highlight-c">&lt;=</span> <span class="highlight-constant highlight-numeric highlight-c++">4.0f</span> <span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">&amp;&amp;</span> iters <span class="highlight-keyword highlight-operator highlight-comparison highlight-c">&lt;</span> max_iters<span class="highlight-punctuation highlight-section highlight-group highlight-end highlight-c++">)</span></span> <span class="highlight-meta highlight-block highlight-c++"><span class="highlight-punctuation highlight-section highlight-block highlight-begin highlight-c++">{</span>
     <span class="highlight-storage highlight-type highlight-c">float</span> x <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> x2 <span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">-</span> y2 <span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">+</span> cx<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
@@ -180,8 +234,7 @@
 <p>Using the GPU version of our program as an example, we can visualize the dependency relationships between the different <a href="https://godbolt.org/#z:OYLghAFBqd5QCxAYwPYBMCmBRdBLAF1QCcAaPECAMzwBtMA7AQwFtMQByARg9KtQYEAysib0QXACx8BBAKoBnTAAUAHpwAMvAFYTStJg1DIAruiakl9ZATwDKjdAGFUtEywYgATKUcAZPAZMADl3ACNMYhAAZgBWUgAHVAVCOwYXNw9vROTUgQCg0JYIqLjLTGtbASECJmICDPdPHytMGzSauoICkPDImPiFWvrGrJbh7sDe4v64gEpLVBNiZHYOAFIvaMDkNywAanXop2QWJgIEI%2Bx1jQBBTe2GXbNMQ%2BPkIfxBK5v7u7QGENMKoEsR9lRaKhzvsAO6BdCoGEAfQAXqhUCw3gARfZcAB0Gn2AHpcRoyRoCVQjgAhX4AoEgsEQqEEWHwxFI1TY/YAWgpAHZJNEAGxCgAcYv5vP2FNi%2BwAVGyGAjkWiMTS6QIGaDwZDoXDlRyAJ7cilcaJcMVeWIATg0kmlsoVSpVqPRLA1d1%2BRJJTmUcn2IjEdX2AFlDFhaGFiKhWUpWcBGJFzmk8d6SdSmEp0PsBPsLq9Nl5UAlbCw8CjMDnMApRAlXmXXmJgCRCAgPV4vPtAun9ggCAQEgoQD7GHi4QBrPD1/BMPEkYBEyd4InKSEDwLAJHN1sXFgKJH8YhIgtI8PKirR2NI%2BO/JFI4CQsJie/7ABuqDwObOF6jMYID4JCYN6iAYxAQCYgQENEXgnt2LBbiklakPskGCDBcFnKoSKEJECgoWh0Gway8pLAQcyHPytJ3PstHgiQ%2BwQVBGGsngpo0t2bxOPBiEVpgHGbLSXjUngFHrFRvx0VJ9Fgkx6HEfs2jsdE1KKVxPE3nxAnCYJ2hiRJNHSUZzLQsgXJHDi1B6gQEB6cSuoshAeAIZplZzBRioGq6aqYoJLocqonq3EZxnWfsyAmhZjEmTZon2TFTkuUhmDuc6Xkcj5hzCf5yJGkFkkhVJMX7KoXZRRSGhUipBWFbRxVGmV0Q4hVVXUcFtV1WFMKmpSQUdbRhEsd2BB4cpbX9bCCB0K8EClVlqkNVxUWSJSWXCpswrDaNRzcVhOEjcQCj6eNE10cV5lNSVXY8vsi1%2BWZfWnZ1LK3dy3U3bNZXZQ1YnZRFj1PXNUVcoqgXVYZT13ZdJqKnl4PtU9xUoty5nfQDp3dVFyOKii6MTYJgm4YdeMheJWK/DVtU%2BvsADqxC4fsxA1iYtAEGmEO1WR6yxCJzrObxlbzYp3M4lFRMKCTtFk5T0tevyWIcAstCcLEvCeNwvCoJwThyFiwVOAT2UKEsKyFlsPCkAQmiK6QEBIGgLAJNNZAUBADtO/QUQMG%2ByDIFwXiSCYXB8HQB3DhAYTW6QYSBHURqcBbMfMMQRoAPJhNobRWxrpAO2wgipwwtDxxwWikFgYQmMAThiLQw451gP6PmsZf4Ez7RvjWUfAm0JgjQnvBQRUUe0Hg0Zxy4WBRwQ9MsAPpCd8QYTJJgWKYE3o9GNbCwQkwwAKAAangmAwqn9bqxb/CCEG4hSDIgiKCo6ilzoegGFvpjmPoY/DpACwllUQEnAeSp2iLyHkJglCHizABM4FxeSJieBgJsKxLhNXdn3TASIxTClzsgiyCgWDYOFJrRe9MsC/wgAsVo7R7AQEcKMTwwd/BTCKCUPQSQUiAMYRw3IgCehsP6MHGhgDOgjFcE0PQIiOgTAEX0KIwiJg8MUV0ORMwFHUJNqsCQSsVZqyjlrDg%2BxggHycNxf2eIVpcEYrgQgDEHhcDmLwbOWh3KkAnCAWIGh9CcEkPol%2BpBDG8GHN4lxNs4CwCQFgN8eBVjkEoO7Z2wRWBrBMWY3EXhLF4gttE2J7BlAABUAAavh8BEHIXoK%2BwhQLsDvlUx%2Bago66GERULOaQHDKmUb4ZUaj2HB04XkdIEisj9L4WkXpQjyiVBkV0Lp0jqiyNYfIqRSjhlMMsIswoyzHGWyZpgL8IANC6I4KrUg6sy6GLXjE1Y%2Bwj4n0iMY0x5jMlWJsWU%2Bx5sUIuEds7LKFonGW23gsBAmAmBYCiFQ9xnjvHKw4H4s5BjODBMOYCl%2BbjYVeH8RcpFqLXELEXikewkggA%3D">PTX assembly</a> instructions in the inner loop as follows:</p>
 <p><img src="images/ilp_graph.svg" alt="Instruction dependency graph" /></p>
 <p>(If that’s hard to read, you can view the full-size image <a href="images/ilp_graph.svg">here</a>.)</p>
-<p>Even though this sequence of instructions contains some amount ILP, that ILP is not sufficient to fully utilize the hardware of one of our GPU’s warp schedulers: in particular, there is no point in the inner loop where the processor has the opportunity to run 4 independent floating-point arithmetic instructions simultaneously. Similar considerations apply to our CPU version.</p>
-<h3>Implementation: Increasing ILP</h3>
+<p>Even though this sequence of instructions contains some amount of ILP, that ILP is not sufficient to fully utilize the hardware of one of our GPU’s warp schedulers: in particular, there is no point in the inner loop where the processor has the opportunity to run enough independent floating-point arithmetic instructions simultaneously. Similar considerations apply to our CPU version.</p>
 <p>At first, it might seem like there isn’t much we can do to increase the amount of ILP in our program. It looks like some of the instructions in our algorithm just fundamentally need the results of earlier instructions to be available before they can execute.</p>
 <p>If we only cared about computing the value of a single pixel, or a single vector of pixels, it would indeed be difficult to increase the amount of ILP in our program. But we don’t want to compute just a single vector of pixels – we want to compute <strong>thousands</strong> of vectors of pixels! Even if the instructions required to compute each individual vector of pixels are inherently sequential, the instructions required to compute <em>multiple different vectors</em> of pixels are independent of each other. We can exploit this observation to significantly increase ILP.</p>
 <blockquote>
@@ -208,32 +261,7 @@
 <p><strong>Where in the image</strong> do you want to take your multiple vectors of pixels from? Do you want to process one long row at a time? Or 2D rectangular tiles? Something more complicated?</p>
 </li>
 </ol>
-<p>Additionally, when you write your code, you may find it helpful to know two non-obvious facts about C/C++/CUDA compilers:</p>
-<ol>
-<li>
-<p>Modern compilers are excellent at <strong>automatically reordering independent instructions</strong> to increase ILP, as long as the instructions are all within one block without control flow in between. For example, if you write: <br></p>
-<pre><span class="highlight-source highlight-c++"><span class="highlight-storage highlight-type highlight-c">float</span> b0 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> a0 <span class="highlight-keyword highlight-operator highlight-c">*</span> a0<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-<span class="highlight-storage highlight-type highlight-c">float</span> c0 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> b0 <span class="highlight-keyword highlight-operator highlight-c">*</span> b0<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-<span class="highlight-storage highlight-type highlight-c">float</span> d0 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> c0 <span class="highlight-keyword highlight-operator highlight-c">*</span> c0<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-
-<span class="highlight-storage highlight-type highlight-c">float</span> b1 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> a1 <span class="highlight-keyword highlight-operator highlight-c">*</span> a1<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-<span class="highlight-storage highlight-type highlight-c">float</span> c1 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> b1 <span class="highlight-keyword highlight-operator highlight-c">*</span> b1<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-<span class="highlight-storage highlight-type highlight-c">float</span> d1 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> c1 <span class="highlight-keyword highlight-operator highlight-c">*</span> c1<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-</span></pre>
-<p>you can trust the compiler to reliably transform it to something like:</p>
-<pre><span class="highlight-source highlight-c++"><span class="highlight-storage highlight-type highlight-c">float</span> b0 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> a0 <span class="highlight-keyword highlight-operator highlight-c">*</span> a0<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-<span class="highlight-storage highlight-type highlight-c">float</span> b1 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> a1 <span class="highlight-keyword highlight-operator highlight-c">*</span> a1<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-
-<span class="highlight-storage highlight-type highlight-c">float</span> c0 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> b0 <span class="highlight-keyword highlight-operator highlight-c">*</span> b0<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-<span class="highlight-storage highlight-type highlight-c">float</span> c1 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> b1 <span class="highlight-keyword highlight-operator highlight-c">*</span> b1<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-
-<span class="highlight-storage highlight-type highlight-c">float</span> d0 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> c0 <span class="highlight-keyword highlight-operator highlight-c">*</span> c0<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-<span class="highlight-storage highlight-type highlight-c">float</span> d1 <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> c1 <span class="highlight-keyword highlight-operator highlight-c">*</span> c1<span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
-</span></pre>
-<p>This means you don’t need to worry too much about the fine-grained order in which your code appears to execute independent instructions. You can simply throw all your instructions into one big “soup” and let the compiler sort it out on the other end.</p>
-</li>
-<li>
-<p>The compiler supports an annotation called <strong><code>#pragma unroll</code></strong> (<a href="https://releases.llvm.org/4.0.0/tools/clang/docs/AttributeReference.html#pragma-unroll-pragma-nounroll">link</a>) which can be used to replace an <code>n</code>-iteration <code>for</code> loop with <code>n</code> copies of its body. For example, if you write: <br></p>
+<p>Additionally, when you write your code, you may find it helpful to not that the the compiler supports an annotation called <strong><code>#pragma unroll</code></strong> (<a href="https://releases.llvm.org/4.0.0/tools/clang/docs/AttributeReference.html#pragma-unroll-pragma-nounroll">link</a>) which can be used to replace an <code>n</code>-iteration <code>for</code> loop with <code>n</code> copies of its body. For example, if you write: <br></p>
 <pre><span class="highlight-source highlight-c++"><span class="highlight-meta highlight-preprocessor highlight-c++"><span class="highlight-keyword highlight-control highlight-import highlight-c++">#pragma</span> unroll
 </span><span class="highlight-keyword highlight-control highlight-c++">for</span> <span class="highlight-meta highlight-group highlight-c++"><span class="highlight-punctuation highlight-section highlight-group highlight-begin highlight-c++">(</span><span class="highlight-support highlight-type highlight-stdint highlight-c">uint32_t</span> i <span class="highlight-keyword highlight-operator highlight-assignment highlight-c">=</span> <span class="highlight-constant highlight-numeric highlight-c++">0</span><span class="highlight-punctuation highlight-terminator highlight-c++">;</span> i <span class="highlight-keyword highlight-operator highlight-comparison highlight-c">&lt;</span> <span class="highlight-constant highlight-numeric highlight-c++">4</span><span class="highlight-punctuation highlight-terminator highlight-c++">;</span> i<span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">+</span><span class="highlight-keyword highlight-operator highlight-arithmetic highlight-c">+</span><span class="highlight-punctuation highlight-section highlight-group highlight-end highlight-c++">)</span></span> <span class="highlight-meta highlight-block highlight-c++"><span class="highlight-punctuation highlight-section highlight-block highlight-begin highlight-c++">{</span>
     <span class="highlight-meta highlight-function-call highlight-c++"><span class="highlight-variable highlight-function highlight-c++">f</span><span class="highlight-meta highlight-group highlight-c++"><span class="highlight-punctuation highlight-section highlight-group highlight-begin highlight-c++">(</span></span></span><span class="highlight-meta highlight-function-call highlight-c++"><span class="highlight-meta highlight-group highlight-c++">i</span></span><span class="highlight-meta highlight-function-call highlight-c++"><span class="highlight-meta highlight-group highlight-c++"><span class="highlight-punctuation highlight-section highlight-group highlight-end highlight-c++">)</span></span></span><span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
@@ -246,8 +274,6 @@
 <span class="highlight-meta highlight-function-call highlight-c++"><span class="highlight-variable highlight-function highlight-c++">f</span><span class="highlight-meta highlight-group highlight-c++"><span class="highlight-punctuation highlight-section highlight-group highlight-begin highlight-c++">(</span></span></span><span class="highlight-meta highlight-function-call highlight-c++"><span class="highlight-meta highlight-group highlight-c++"><span class="highlight-constant highlight-numeric highlight-c++">3</span></span><span class="highlight-meta highlight-group highlight-c++"><span class="highlight-punctuation highlight-section highlight-group highlight-end highlight-c++">)</span></span></span><span class="highlight-punctuation highlight-terminator highlight-c++">;</span>
 </span></pre>
 <p>The compiler will also often perform this kind of unrolling automatically when it guesses that doing so will improve performance, but using <code>#pragma unroll</code> manually provides a stronger guarantee.</p>
-</li>
-</ol>
 <p>After you’ve written your vector + ILP Mandelbrot implementations for the CPU and GPU, you can include your answer to the following in your final write-up:</p>
 <blockquote>
 <p><strong>Question 1 for final write-up:</strong> What speedup do you see from increasing the amount of ILP in your CPU and GPU Mandelbrot implementations? What strategy did you use for partitioning the image into groups of vectors, and why did you choose it? How did you deal with managing control flow and state on the CPU and GPU? How many different vectors did you choose to process at once in your CPU and GPU implementations, and why? What seem to be the limiting factors on how far you can scale ILP?</p>
@@ -281,12 +307,12 @@
 <h3>Implementation: GPU Multi-Core</h3>
 <p>By direct analogy to running one (vector-parallel) thread on each of the 8 cores of the CPU, on the GPU our goal for this section is to run one <strong>warp</strong> on each of the GPU’s <strong>192 warp schedulers</strong>.</p>
 <p>Conceptually, what we want to do is to launch our kernel with <code>192 * 32 = 6144</code> CUDA threads, and have each group of 32 of those CUDA threads run on a separate warp scheduler. However, we can’t just launch our kernel with launch parameters</p>
-<pre><code>&lt;&lt;&lt;1, 6144&gt;&gt;&gt;
-</code></pre>
+<pre><span class="highlight-text highlight-plain">&lt;&lt;&lt;1, 6144&gt;&gt;&gt;
+</span></pre>
 <p>because CUDA uses a <strong>two-level hierarchy of software parallelism</strong> which corresponds roughly to the two-level  hierarchy of SMs and warp schedulers which is present in the hardware. Specifically:</p>
 <ol>
 <li>
-<p><strong>CUDA threads are organized into groups called “blocks.”</strong> <sup class="footnote-reference"><a href="#cta">5</a></sup> When you launch a kernel, you specify both the number of blocks to launch, and the number of CUDA threads to launch per block. These are the two numbers in the <code>&lt;&lt;&lt;..., ...&gt;&gt;&gt;</code> kernel launch angle bracket notation.</p>
+<p><strong>CUDA threads are organized into groups called “blocks.”</strong> <sup class="footnote-reference"><a href="#cta">3</a></sup> When you launch a kernel, you specify both the number of blocks to launch, and the number of CUDA threads to launch per block. These are the two numbers in the <code>&lt;&lt;&lt;..., ...&gt;&gt;&gt;</code> kernel launch angle bracket notation.</p>
 </li>
 <li>
 <p><strong>All the warps in a given block are guaranteed to run on the same SM.</strong> It is possible to have multiple blocks run on the same SM simultaneously, but not vice-versa.</p>
@@ -297,7 +323,7 @@
 <p>This gives us almost all the pieces we need to scale up our Mandelbrot kernel to use every warp scheduler on the GPU. There are just two more things you strictly need to know:</p>
 <ol>
 <li>
-<p>The value of <code>threadIdx.x</code> is unique per CUDA thread within a block, and resets across blocks. That means that in any given block, warp <code>0</code> will have <code>threadIdx.x</code> values <code>0, ..., 31</code>, warp <code>1</code> will have <code>threadIdx.x</code> values <code>32, ..., 63</code>, and so on. <sup class="footnote-reference"><a href="#3D">6</a></sup></p>
+<p>The value of <code>threadIdx.x</code> is unique per CUDA thread within a block, and resets across blocks. That means that in any given block, warp <code>0</code> will have <code>threadIdx.x</code> values <code>0, ..., 31</code>, warp <code>1</code> will have <code>threadIdx.x</code> values <code>32, ..., 63</code>, and so on. <sup class="footnote-reference"><a href="#3D">4</a></sup></p>
 </li>
 <li>
 <p>You can access the index of the current block using the magic variable <code>blockIdx.x</code>.</p>
@@ -352,12 +378,15 @@
 <blockquote>
 <p><strong>Question 8 for final write-up:</strong> In your CPU and GPU implementations, how much speedup, if any, were you able to achieve by adding your ILP optimizations back in on top of your multi-core, multi-threaded algorithms? How does the speedup from increasing ILP in this setting compare to the speedup from increasing ILP in the single-threaded, single-core setting? What seems to be the optimal number of threads in this setting on CPU and GPU, and what is the optimal number of independent vectors of pixels to process at once in the inner loop? What factors do you think might be contributing to what you observe?</p>
 </blockquote>
-<h2>Deliverables</h2>
-<h3>Checkpoint (Due Monday, September 16, 11:59pm)</h3>
-<p>As with last week’s lab, you do not need to submit any code for the initial checkpoint, but you should have made some effort to get started on the lab. Ideally, we’d like to see you try to make some progress on Part 1 and Part 2 – if you’re stuck on Part 1 before the live lab, it’s fine to set it aside and move on to trying Part 2.</p>
-<p>On the Gradescope assignment “Lab 2 Checkpoint,” (<a href="https://www.gradescope.com/courses/849967/assignments/4955974/">Link</a>) submit brief answers to the two prompts checking in about how you’re doing with the lab.</p>
-<h3>Final Submission (Due <em>Saturday</em>, September 21, 11:59pm)</h3>
-<p>On the Gradescope assignment “Lab 2 Final,” submit your <strong>completed code</strong> for <code>mandelbrot_cpu_2.cpp</code> and <code>mandelbrot_gpu_2.cpp</code>, as well as a PDF writeup containing your answers to Questions 1 - 8 above, answering each sub-question with roughly a sentence or two.</p>
+<h2>Extensions &amp; Extra Credit</h2>
+<ul>
+<li>
+<p>In addition to the <code>FFMA</code>, measure latency of other instructions. Brownie points if it interacts with the memory subsystem.</p>
+</li>
+<li>
+<p>The curve we generated with <code>warp_scheduler.cu</code> is reminiscent of what we call a roofline curve <sup class="footnote-reference"><a href="#4">5</a></sup>. Can you empirically generate the entire roofline curve for this GPU?</p>
+</li>
+</ul>
 <hr />
 <div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
 <p>Some NVIDIA documentation refers to these four elements of the SM as “partitions,” and uses the term “warp scheduler” to refer to just the control logic of a partition. Our use of the term “warp scheduler” to refer to the whole unit is therefore a kind of <a href="https://en.wikipedia.org/wiki/Synecdoche">synecdoche</a>. Other authors refer to these elements of the SM as “<a href="https://hazyresearch.stanford.edu/blog/2024-05-12-tk">quadrants</a>.”</p>
@@ -365,19 +394,16 @@
 <div class="footnote-definition" id="2"><sup class="footnote-definition-label">2</sup>
 <p>In particular, the cores on the CPU we’re using are <a href="https://en.wikipedia.org/wiki/Wide-issue">wide-issue</a> and <a href="https://en.wikipedia.org/wiki/Out-of-order_execution">out-of-order</a>, whereas the cores on our GPU are single-issue and in-order.</p>
 </div>
-<div class="footnote-definition" id="latency-source"><sup class="footnote-definition-label">3</sup>
-<p><a href="https://docs.nvidia.com/cuda/turing-tuning-guide/index.html#instruction-scheduling">Source</a> for the 4-cycle latency figure. The linked document was written for slightly older hardware than we’re using, but should still apply.</p>
-</div>
-<div class="footnote-definition" id="throughput-source"><sup class="footnote-definition-label">4</sup>
-<p><a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#arithmetic-instructions">Source</a> for the 1 instruction per cycle throughput figure. In the linked table, the “compute capability” column corresponding to the specific GPU we’re using is “8.6.” Note that this table lists throughput per <strong>SM</strong>, which is the aggregate throughput across its 4 warp schedulers. Generally dividing these numbers by 4 gives the throughput per warp scheduler.</p>
-</div>
-<div class="footnote-definition" id="cta"><sup class="footnote-definition-label">5</sup>
+<!-- [^latency-source]: [Source](https://docs.nvidia.com/cuda/turing-tuning-guide/index.html#instruction-scheduling) for the 4-cycle latency figure. The linked document was written for slightly older hardware than we're using, but should still apply.
+
+[^throughput-source]: [Source](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#arithmetic-instructions) for the 1 instruction per cycle throughput figure. In the linked table, the "compute capability" column corresponding to the specific GPU we're using is "8.6." Note that this table lists throughput per **SM**, which is the aggregate throughput across its 4 warp schedulers. Generally dividing these numbers by 4 gives the throughput per warp scheduler. -->
+<div class="footnote-definition" id="cta"><sup class="footnote-definition-label">3</sup>
 <p>“Blocks” are sometimes also called “cooperative thread arrays” (CTAs), and NVIDIA’s documentation uses the two terms interchangeably.</p>
 </div>
-<div class="footnote-definition" id="3D"><sup class="footnote-definition-label">6</sup>
+<div class="footnote-definition" id="3D"><sup class="footnote-definition-label">4</sup>
 <p>We’re deliberately ignoring the <code>y</code> and <code>z</code> dimensions of CUDA’s <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#thread-hierarchy">3D parallelism</a> in this lab, because 3D parallelism is essentially just a thin layer of user-interface convenience over what is fundamentally a <em>linear</em> index space.</p>
 </div>
-
-</main>
-</body>
-</html>
+<div class="footnote-definition" id="4"><sup class="footnote-definition-label">5</sup>
+<p>For more reading, you can refer to the original <a href="https://dl.acm.org/doi/pdf/10.1145/1498765.1498785">roofline article</a> from Williams et al.</p>
+</div>
+</main></body></html>

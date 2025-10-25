@@ -1,10 +1,4 @@
-<!DOCTYPE html><html lang="en-us">
-<head>
-<meta charset="utf-8">
-<title>Home</title>
-<base href="/spring26/labs/lab4/">
-<meta content="width=device-width, initial-scale=1" name="viewport">
-<style>@font-face {
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>Home</title><base href="/spring26/labs/lab4/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
     font-family: "Tex Gyre Heros";
     src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
     font-weight: regular;
@@ -30,57 +24,38 @@
 }</style><link href="/spring26/assets/main.css" rel="stylesheet">
 <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet">
 <link href="/spring26/assets/favicon.png" rel="icon" type="image/png">
-</head>
-
-<body><header><nav>
+</head><body><header><nav>
 <h1><a href="/spring26/">Home</a></h1>
 <p><a href="/spring26/calendar">Calendar</a></p>
 <p><a href="/spring26/labs">Labs</a></p>
+<p><a href="/spring26/lectures">Lectures</a></p>
 <p><a href="/spring26/syllabus">Syllabus</a></p>
 <p><a href="/spring26/resources">Resources</a></p>
 <p><a href="/spring26/contact">Contact</a></p>
 <p><a href="/spring26/piazza">Piazza</a></p>
-</nav></header>
-
-<main>
-
-<h1>Lab 4: Matrix Multiply – Tiling and Reuse</h1>
-
+</nav></header><main><h1>Lab 4: Matrix Multiply – Tiling and Reuse</h1>
 <h2>Prologue: Logistics</h2>
 <h3>Due Dates</h3>
 <p>For this lab, you’ll be turning in the following deliverables:</p>
 <ul>
 <li>
-<p><strong>Checkpoint:</strong> Due Monday, September 30, 11:59pm (<a href="https://www.gradescope.com/courses/849967/assignments/5072213/">Gradescope</a>)</p>
+<p><strong>Checkpoint:</strong> Due Monday, September 29, 11:59pm. Please submit your prelab answers and answers to Question 1 in Part 1 (“Analysis”) on Gradescope.</p>
 </li>
 <li>
-<p><strong>Final Submission:</strong> Due Friday, October 4, 11:59pm (<a href="https://www.gradescope.com/courses/849967/assignments/5072328/">Gradescope</a>)</p>
+<p><strong>Final Submission:</strong> Due Friday, October 3, 11:59pm. Submit your writeup for the lab and your completed code for <code>matmul.cu</code> on Gradescope.</p>
 </li>
 </ul>
-<p>See the “Deliverables” section at the end of this document for more information on what you’ll be turning in.</p>
-<p>Note that because we pushed both the Lab 3 deadline and Lab 4 release back by one day relative to the usual schedule, the checkpoint for this week will be relatively relaxed.</p>
 <h3>Starter Code</h3>
 <p>You can get the starter code for this lab by cloning the <a href="https://github.com/accelerated-computing-class/lab4">lab repository</a>:</p>
 <pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">git</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> clone git@github.com:accelerated-computing-class/lab4.git</span>
 </span></pre>
-<h3>Errata: L1 Cache Behavior (<a href="/spring26/resources/errata/l1-cache">Link</a>)</h3>
-<p>Since publishing this lab, we’ve seen evidence that some aspects of our description of the L1 cache may be inaccurate.</p>
-<p><strong>All the performance guidance in this lab continues to apply</strong>, in the sense that, if you follow that guidance, your code will run fast in the ways we’ve described.</p>
-<p>However, it seems that NVIDIA’s L1 cache hardware may have capabilities beyond what we gave it credit for, and that some programming patterns which we warn against may in fact perform <strong>better than expected</strong>. For more information, see <a href="/spring26/resources/errata/l1-cache"><em>Errata: L1 Cache Behavior</em></a>.</p>
 <h3>Viewing Assembly</h3>
-<p>Modern compilers are complicated beasts, and the best way to understand what they’re doing is often to manually inspect the instructions they emit. Starting with this lab, and going forward, we encourage you to start making a habit of <strong>looking at the generated assembly code</strong> for your kernels as part of your performance engineering workflow.</p>
-<p>To view the assembly code for your GPU kernels, you can use <a href="https://godbolt.org/z/Pbf494Tzd">Compiler Explorer</a> (also known as “Godbolt,” after its creator <a href="https://xania.org/MattGodbolt">Matt Godbolt</a>). Compiler Explorer is an excellent free online tool which lets you view the assembly code for programs written in any of a huge variety of different languages, compiled with any of a huge selection of different compilers.</p>
+<p>Modern compilers are complicated beasts, and the best way to understand what they’re doing is often to manually inspect the instructions they emit. Starting with this lab, and going forward, we encourage you to start making a habit of <strong>looking at the generated assembly code</strong> for your kernels as part of your performance engineering workflow. If you’ve already made a habit of doing this, the easiest way to do this is to use the <code>-s</code> flag on telerun, which will generate both PTX and SASS for your application.</p>
+<p>Alternatively, to view the assembly code for your GPU kernels, you can use <a href="https://godbolt.org/z/qGhhd5s9r">Compiler Explorer</a> (also known as “Godbolt,” after its creator <a href="https://xania.org/MattGodbolt">Matt Godbolt</a>). Compiler Explorer is an excellent free online tool which lets you view the assembly code for programs written in any of a huge variety of different languages, compiled with any of a huge selection of different compilers.</p>
 <p>You can use the following Compiler Explorer link to interactively view the assembly for your CUDA programs:</p>
-<p>&gt;&gt;&gt; <a href="https://godbolt.org/z/Pbf494Tzd">Compiler Explorer for CUDA</a> &lt;&lt;&lt;</p>
-<p>(We’ve tried to configure this Compiler Explorer page to approximate the CUDA build environment we use on Telerun as closely as possible, but it’s possible there will be some discrepancies. <del>We’re working on letting you also get assembly output directly from Telerun – stay tuned for that!</del>)</p>
-<blockquote>
-<p><strong>Update 2024-10-01:</strong> Telerun now supports assembly output! Pull from the <a href="https://github.com/accelerated-computing-class/telerun">Telerun Git repo</a> to update your client to the latest version.</p>
-<p>Use the <code>--asm</code> flag (shorthand <code>-s</code>) to save assembly output for your program:</p>
-<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">python3</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> telerun.py submit<span class="highlight-variable highlight-parameter highlight-option highlight-shell"><span class="highlight-punctuation highlight-definition highlight-parameter highlight-shell"> --</span>asm</span> source_file.cu</span>
-</span></pre>
-<p>You can find the generated assembly code in <code>./telerun-out/&lt;job_id&gt;/</code>.</p>
-</blockquote>
-<p>In Compiler Explorer, you’ll find that the CUDA compiler actually generates two different kinds of assembly code for your kernels, which you can toggle between with a drop-down menu: “<strong>PTX</strong>,” and “<strong>SASS</strong>.” SASS corresponds to the actual machine code which the GPU executes, whereas PTX corresponds to a slightly higher-level representation of your program.<sup class="footnote-reference"><a href="#llvm">1</a></sup> Whenever a CUDA program is compiled and executed on a GPU, it is first compiled to PTX, and then that PTX is compiled to SASS.</p>
+<p>&gt;&gt;&gt; <a href="https://godbolt.org/z/qGhhd5s9r">Compiler Explorer for CUDA</a> &lt;&lt;&lt;</p>
+<p>(We’ve tried to configure this Compiler Explorer page to approximate the CUDA build environment we use on Telerun as closely as possible, but it’s possible there will be some discrepancies.)</p>
+<p>In general, you’ll find that the CUDA compiler actually generates two different kinds of assembly code for your kernels, which you can toggle between with a drop-down menu: “<strong>PTX</strong>,” and “<strong>SASS</strong>.” SASS corresponds to the actual machine code which the GPU executes, whereas PTX corresponds to a slightly higher-level representation of your program, as you’ve seen to some degree in the prelab for Lab 3.<sup class="footnote-reference"><a href="#llvm">1</a></sup> Whenever a CUDA program is compiled and executed on a GPU, it is first compiled to PTX, and then that PTX is compiled to SASS.</p>
 <p>The PTX/SASS distinction exists because NVIDIA wants to reserve the right to change the ISA they use in their hardware over time. As such, SASS is <strong>unstable</strong> across different generations of GPUs, essentially <strong>undocumented</strong>, and <strong>cannot be authored by hand</strong> (NVIDIA does not provide an official SASS-text-to-binary assembler). PTX, by contrast, is stable, thoroughly documented, and intended to be written by hand (when the need arises).</p>
 <p>We won’t be going too in-depth on exactly how PTX and SASS work, but it’s often possible to guess roughly what a PTX or SASS instruction does based just on its name. For more information, you can refer to NVIDIA’s documentation here:</p>
 <ul>
@@ -93,7 +68,7 @@
 </ul>
 <h2>Introduction</h2>
 <h3>Goals for This Lab</h3>
-<p>Modern GPUs are extremely flexible, but one of the things they’re best at – and best known for – is <strong>matrix multiplication</strong>. Among many other applications, matrix multiplication plays a central role in <strong>deep learning</strong>, where it serves as <em>the</em> fundamental computational primitive underlying training and inference for neural networks like <a href="https://claude.ai/">large language models</a> and <a href="https://www.midjourney.com/explore">diffusion image generators</a>. As an example of the importance of this application, you may have seen in the news that Meta <a href="https://engineering.fb.com/2024/03/12/data-center-engineering/building-metas-genai-infrastructure/">recently purchased 350000 NVIDIA H100 GPUs</a> to “support their current and next generation AI models.” What that means in practice is that those 350000 GPUs will be spending most of their operational life multiplying matrices.</p>
+<p>Modern GPUs are extremely flexible, but one of the things they’re best at – and best known for – is <strong>matrix multiplication</strong>. Among many other applications, matrix multiplication plays a central role in <strong>deep learning</strong>, where it serves as <em>the</em> fundamental computational primitive underlying training and inference for neural networks like <a href="https://claude.ai/">large language models</a> and <a href="https://www.midjourney.com/explore">diffusion image generators</a>. As an example of the importance of this application, you may have seen in the news last year that Meta (or alternatively, any big AI company) <a href="https://engineering.fb.com/2024/03/12/data-center-engineering/building-metas-genai-infrastructure/">recently purchased 350000 NVIDIA H100 GPUs</a> to “support their current and next generation AI models.” What that means in practice is that those 350000 GPUs will be spending most of their operational life multiplying matrices.</p>
 <p>Over the course of the <strong>next several weeks</strong>, we’ll be learning how to implement a <strong>nearly state-of-the-art</strong> matrix multiplication kernel for NVIDIA GPUs. We’ll be building up our implementation piece-by-piece, with a new lab each week covering a new set of optimizations. By the end of this progression, we’ll be using advanced features of the GPU like <a href="https://developer.nvidia.com/blog/nvidia-ampere-architecture-in-depth/#introducing_the_nvidia_a100_tensor_core_gpu">tensor cores</a> and <a href="https://developer.nvidia.com/blog/nvidia-ampere-architecture-in-depth/#asynchronous_copy%C2%A0">asynchronous copies</a>. For this first lab, though, we’ll only need the features of CUDA that we’ve already seen in Labs 1 - 3.</p>
 <p>Concretely, in this lab we’ll be looking at three ideas:</p>
 <ol>
@@ -107,6 +82,18 @@
 <p>How to exploit data reuse at the level of the <strong>register file</strong>.</p>
 </li>
 </ol>
+<h2>Part 0: Prelab – Roofline</h2>
+
+<p>In previous prelabs, we have benchmarked the latency of both arithmetic and memory instructions to determine the relative latency of operations, which provide an insight into the internal operations of the hardware we are using. In this prelab, we’ll take a higher level view of the same idea by diving deeper into the Roofline Model, which provides a simple model for performance engineering.</p>
+<blockquote>
+<p><strong>Deliverable:</strong> Read the explanation of the <a href="/spring26/resources/roofline"><strong>Roofline Model</strong></a>, and answer the two prelab questions below.</p>
+</blockquote>
+<blockquote>
+<p><strong>Prelab Question 1:</strong> What is the operational intensity of a matrix multiplication where <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>=</mo><mi>N</mi><mo>=</mo><mi>K</mi><mo>=</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">M=N=K=n</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.10903em;">M</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.10903em;">N</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.07153em;">K</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">n</span></span></span></span>? (the equation may depend on <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi></mrow><annotation encoding="application/x-tex">n</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">n</span></span></span></span>)? You may want to consider multiple cases of how the values in the matrices are loaded from memory during the computation.</p>
+</blockquote>
+<blockquote>
+<p><strong>Prelab Question 2:</strong> For what value of <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi></mrow><annotation encoding="application/x-tex">n</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">n</span></span></span></span> does matrix multiplication transition from being memory-bound to compute-bound on our GPU? You may want to consider multiple cases of how the values in the matrices are loaded from memory during the computation.</p>
+</blockquote>
 <h2>Part 1: Analysis</h2>
 <p>The matrix multiplication workload we’ll be implementing can be described by the following sequential code:</p>
 <pre><span class="highlight-source highlight-python"><span class="highlight-comment highlight-line highlight-number-sign highlight-python"><span class="highlight-punctuation highlight-definition highlight-comment highlight-python">#</span> a: float array of size `size_i * size_k`
@@ -135,61 +122,52 @@
 <p><strong>Question 1 for final write-up:</strong> Walk through the following analysis in the context of the large-scale tests, with matrices of size <code>3072</code>:</p>
 <ol>
 <li>
-<p>How many FLOPs are we computing in total? (Each <code>s += a[i, k] * b[k, j]</code> is a single “fused multiply-add” (FMA), which is conventionally counted as <strong>two</strong> FLOPs.)</p>
+<p>Using your calculation of operational intensity from the prelab, what is the fastest this workload could possibly run on our GPU if it was compute-bound? (Assume we are only using FMAs and no Tensor Cores.)</p>
 </li>
 <li>
-<p>If FLOPs were the only constraint, what is the fastest this workload could possibly run on our GPU? (Assume we’re using ordinary FMA instructions, not tensor cores.)</p>
+<p>Similarly, assuming we only need to access each unique location in DRAM <strong>once</strong>, what is the fastest this workload could possibly run if it was DRAM-bound?</p>
 </li>
 <li>
-<p>How many <strong>unique</strong> locations in DRAM are we accessing over the whole workload? (Assume the “A” and “B” matrices start in DRAM, and that our results in “C” must be written to DRAM.)</p>
-</li>
-<li>
-<p>If we only needed to access each unique location in DRAM <strong>once</strong>, and if DRAM bandwidth were the only constraint, what is the fastest this workload could possibly run on our GPU?</p>
-</li>
-<li>
-<p>How does (4) compare to (2)? Given a very well-optimized implementation, would you expect the run time of this workload to be dominated by compute or by data movement?</p>
+<p>How does (2) compare to (1)? Given a very well-optimized implementation, would you expect the run time of this workload to be dominated by compute or by data movement?</p>
 </li>
 <li>
 <p>Alternatively, imagine we <strong>do not exploit reuse</strong>, so every <code>s += a[i, k] * b[k, j]</code> operation loads the <code>a[i, k]</code> and <code>b[k, j]</code> elements <strong>directly from DRAM</strong>. Then how many total bytes would we need to load from DRAM?</p>
 </li>
 <li>
-<p>If we had no reuse, as in (6), and if DRAM bandwidth were the only constraint, what is the fastest this workload could possibly run on our GPU?</p>
+<p>If we had no reuse, as in (4), and if DRAM bandwidth were the only constraint, what is the fastest this workload could possibly run on our GPU?</p>
 </li>
 <li>
 <p>Imagine instead that every <code>s += a[i, k] * b[k, j]</code> operation could somehow load directly from <strong>L2</strong>. Then if L2 bandwidth were the only constraint, what is the fastest this workload could possibly run?</p>
 </li>
 <li>
-<p>How do (7) and (8) compare to (2)?</p>
+<p>How do (5) and (6) compare to (1)?</p>
 </li>
 </ol>
 </blockquote>
-<p><strong>Relevant Numbers:</strong> You may find the following hardware specs for our RTX A4000 GPU helpful in answering the questions above:</p>
+<p><strong>Relevant Numbers:</strong> You may find the following hardware specs for our RTX 4000 Ada GPU helpful in answering the questions above:</p>
 <ul>
 <li>
 <p><strong>Total fused multiply-add (FMA) throughput:</strong> <br></p>
-<pre><code>  (32 lanes / warp scheduler / cycle)
+<pre><span class="highlight-text highlight-plain">  (32 lanes / warp scheduler / cycle)
 * (2 FLOP / lane)
 * (4 warp schedulers / SM)
 * (48 SMs)
-* (1.56 GHz)
+* (2.175 GHz)
 
-= 19.2 TFLOP/sec
-</code></pre>
-</li>
+= 26.7 TFLOP/sec
+</span></pre></li>
 <li>
 <p><strong>Total DRAM bandwidth:</strong> <br></p>
-<pre><code>448 GB/sec
-</code></pre>
-</li>
+<pre><span class="highlight-text highlight-plain">360 GB/sec
+</span></pre></li>
 <li>
 <p><strong>Total L2 bandwidth:</strong> <br></p>
-<pre><code>1.5 TB/sec
-</code></pre>
-</li>
+<pre><span class="highlight-text highlight-plain">2.4 TB/sec
+</span></pre></li>
 </ul>
 <!--
 * **Total SM-level SRAM bandwidth:** <br>
-    ```
+    ```txt
       (32 lanes / SM / cycle)
     * (4 bytes / lane)
     * (48 SMs)
@@ -198,10 +176,10 @@
     = 9.6 TB/sec
     ``` -->
 <h2>Part 2: Reuse in L1</h2>
-<p>Our first implementation goal in this lab will be to write a matrix multiplication kernel which runs in <strong>under 80 ms</strong> on our large-scale benchmark.</p>
-<p>If you’ve already figured out your answers for Question 1 in Part 1, you might notice something interesting about this 80 ms target: it is <strong>impossible to achieve</strong> if the operands for every FMA are loaded directly from <strong>L2</strong> or <strong>DRAM</strong>. That means that we’re going to need to <strong>amortize</strong> the cost of loading data from L2 and DRAM, and load the operands for most of our FMAs from <strong>faster memory resources</strong>, such as the L1 SRAM on each SM.<sup class="footnote-reference"><a href="#l1_terminology">2</a></sup> To do that, we’ll need to exploit <strong>data reuse</strong>!</p>
+<p>Our first implementation goal in this lab will be to write a matrix multiplication kernel which runs in <strong>under 45 ms</strong> on our large-scale benchmark.</p>
+<p>If you’ve already figured out your answers for Question 1 in Part 1, you might notice something interesting about this 45 ms target: it is <strong>impossible to achieve</strong> if the operands for every FMA are loaded directly from <strong>L2</strong> or <strong>DRAM</strong>. That means that we’re going to need to <strong>amortize</strong> the cost of loading data from L2 and DRAM, and load the operands for most of our FMAs from <strong>faster memory resources</strong>, such as the L1 SRAM on each SM.<sup class="footnote-reference"><a href="#l1_terminology">2</a></sup> To do that, we’ll need to exploit <strong>data reuse</strong>!</p>
 <blockquote>
-<p><strong>Deliverable:</strong> In the file <code>matmul.cu</code>, implement the functions <code>matmul_l1</code> and <code>launch_matmul_l1</code> so that they can process the large-scale benchmark in <strong>under 80 ms</strong>. To do this, your program will need to somehow make use of local SRAM resources.</p>
+<p><strong>Deliverable:</strong> In the file <code>matmul.cu</code>, implement the functions <code>matmul_l1</code> and <code>launch_matmul_l1</code> so that they can process the large-scale benchmark in <strong>under 45 ms</strong>. To do this, your program will need to somehow make use of local SRAM resources.</p>
 </blockquote>
 <p>Below, we give some suggestions on how you might achieve this performance target. (You may find it’s easier than you expect!)</p>
 <h3>Partitioning Strategies</h3>
@@ -220,13 +198,13 @@ This is how we accessed the L1 in Lab 3. You can declare a shared memory scratch
 </li>
 <li>
 <p><strong>As a cache for read-only data.</strong> <br>
-This is more similar to how the L1 cache works on a CPU, in which the cache <strong>automatically</strong> saves the value at a given address on first access, and then <strong>automatically</strong> reuses that value on subsequent accesses until it is evicted. Because the L1 caches on the GPU are <a href="https://en.wikipedia.org/wiki/Cache_coherence"><strong>incoherent</strong></a>, the compiler will typically emit load instructions which <strong>bypass</strong> the L1 cache by default, and will only emit instructions that use the L1 cache under two circumstances:</p>
+This is more similar to how the L1 cache works on a CPU, in which the cache <strong>automatically</strong> saves the value at a given address on first access, and then <strong>automatically</strong> reuses that value on subsequent accesses until it is evicted. To utilize the L1 cache, you can either:</p>
 <ol>
 <li>
-<p>If the <strong>compiler can figure out</strong> that the memory location you’re reading won’t change from one access to the next. This is somewhat rare and unreliable, but it <em>can</em> happen!</p>
+<p><strong>Manually tell the compiler</strong> that the memory location you’re reading won’t change from one access to the next. You can do this by using the special <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#read-only-data-cache-load-function"><code>__ldg(...)</code></a> function.</p>
 </li>
 <li>
-<p>If you <strong>manually tell the compiler</strong> that the memory location you’re reading won’t change from one access to the next. You can do this by using the special <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#read-only-data-cache-load-function"><code>__ldg(...)</code></a> function.</p>
+<p>Rely on the <strong>compiler to figure out</strong> when the memory location you’re reading can be appropriately cached. We do not have a concrete explanation of how or when this happens, as the L1 caches on the GPU are <a href="https://en.wikipedia.org/wiki/Cache_coherence"><strong>incoherent</strong></a>, but we have provided some detail on our understanding in the <a href="/spring26/resources/errata/l1-cache/"><strong>notes</strong></a>.</p>
 </li>
 </ol>
 </li>
@@ -246,18 +224,18 @@ This is more similar to how the L1 cache works on a CPU, in which the cache <str
 <p><strong>Question 3 for final write-up:</strong> Imagine that every load of <code>a[i, k]</code> or <code>b[k, j]</code> could somehow load <strong>directly from L1</strong>. Then if L1 bandwidth were the only constraint, what is the fastest our workload could possibly run?</p>
 </blockquote>
 <p>For reference, the <strong>aggregate L1 bandwidth</strong> across the whole machine is given by: <br></p>
-<pre><code>  (32 lanes / SM / cycle)
+<pre><span class="highlight-text highlight-plain">  (32 lanes / SM / cycle)
 * (4 bytes / lane)
 * (48 SMs)
-* (1.56 GHz)
+* (2.175 GHz)
 
-= 9.6 TB/sec
-</code></pre>
+= 13.4 TB/sec
+</span></pre>
 <h3>Implementation</h3>
-<p>For our second and final kernel in this lab, we’ll be aiming for a much more ambitious run time target than in the previous section: <strong>16 ms or less</strong> on our large-scale benchmark. If you’ve already answered Question 3, you might notice that in order to hit this 16 ms target, we’re going to need to load the operands for our FMAs from some memory resource which is <strong>faster than L1</strong>. But what’s faster than L1? There’s only one such resource: <strong>registers!</strong></p>
+<p>For our second and final kernel in this lab, we’ll be aiming for a much more ambitious run time target than in the previous section: <strong>8 ms or less</strong> on our large-scale benchmark. If you’ve already answered Question 3, you might notice that in order to hit this 8 ms target, we’re going to need to load the operands for our FMAs from some memory resource which is <strong>faster than L1</strong>. But what’s faster than L1? There’s only one such resource: <strong>registers!</strong></p>
 <p>In the same way that in Part 2 we amortized the cost of loads from L2 and DRAM by reusing data in L1, in this kernel we’ll need to amortize the cost of loading from L1 by reusing data in registers.</p>
 <blockquote>
-<p><strong>Deliverable:</strong> In the file <code>matmul.cu</code>, implement the functions <code>matmul_l1_reg</code> and <code>launch_matmul_l1_reg</code> so that they can process the large-scale benchmark in <strong>under 16 ms</strong>. To do this, your program will need to somehow reuse data at the level of the register file.</p>
+<p><strong>Deliverable:</strong> In the file <code>matmul.cu</code>, implement the functions <code>matmul_l1_reg</code> and <code>launch_matmul_l1_reg</code> so that they can process the large-scale benchmark in <strong>under 8 ms</strong>. To do this, your program will need to somehow reuse data at the level of the register file.</p>
 </blockquote>
 <p>The strategy we recommend for implementing this kernel is to decompose the problem into <em>microtiles</em>, such that we can compute the FMAs associated with each microtile <em>entirely using data stored (temporarily) in registers</em>. Using our three-dimensional visualization of the <code>i, j, k</code> iteration space from earlier, such a microtile decomposition would look something like the following:</p>
 <p><img src="images/gemm_block_microtiles.png" alt="Matrix multiply decomposition into microtiles" /></p>
@@ -291,7 +269,7 @@ This is more similar to how the L1 cache works on a CPU, in which the cache <str
 </li>
 </ul>
 <h4>Using L1 Effectively</h4>
-<p>Both when accessing the L1 as a scratchpad and when accessing it as a cache, you should be aware that there are some constraints on the kinds of access patterns which the L1 SRAM can efficiently support:</p>
+<p>You should be aware that there are some constraints on the kinds of access patterns which the L1 SRAM can efficiently support:</p>
 <ul>
 <li>
 <p><strong>Scratchpad Mode: Bank Conflicts.</strong></p>
@@ -302,9 +280,8 @@ This is more similar to how the L1 cache works on a CPU, in which the cache <str
 </li>
 <li>
 <p><strong>Cache Mode: Cache Line Effects.</strong></p>
-<p>When you’re using the L1 as a read-only data cache, you can only make use of its full bandwidth if each warp accesses just a <strong>single contiguous 32-word cache line</strong> in each load instruction. (<a href="https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/memorystatisticscaches.htm">Reference</a>)</p>
-<p>When the L1 is acting as a cache, it can only perform a single tag lookup and serve data from a single cache line on each clock cycle. If different lanes in a warp try to <strong>simultaneously</strong> access data belonging to different cache lines, those lanes’ requests will be processed <strong>serially</strong>, and the total time taken will be proportional to the number of distinct cache lines touched.</p>
-<p>You might notice that this means that using the L1 as an implicit cache is in an important sense <strong>less flexible</strong> than using the L1 as a shared memory scratchpad. When using the L1 as a scratchpad, we only need to ensure each load instruction is <strong>free from bank conflicts</strong> in order to use the L1’s full bandwidth. When using it as a cache, we need to ensure that each load is <strong>contiguous and 128-byte-aligned</strong>, which is a much stronger constraint.</p>
+<p>Generally, when you’re using the L1 as a read-only data cache, it is a good mental model to assume that you can only utilize full bandwidth if each warp accesses just a <strong>single contiguous 32-word cache line</strong> in each load instruction. (<a href="https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/memorystatisticscaches.htm">Reference</a>). However, we have seen some evidence online that the L1 cache may be able to perform multiple tag lookups in a single cycle, as described in the <a href="/spring26/resources/errata/l1-cache/">Notes</a>, but we do not recommend using this as your mental model.</p>
+<p>You might notice that this means that using the L1 as an implicit cache is in an important sense <strong>less flexible</strong> than using the L1 as a shared memory scratchpad. When using the L1 as a scratchpad, we only need to ensure each load instruction is <strong>free from bank conflicts</strong> in order to use the L1’s full bandwidth. When using it as a cache, our mental model typically must ensure that each load is <strong>contiguous and 128-byte-aligned</strong>, which is a much stronger constraint.</p>
 </li>
 </ul>
 <h3>Questions</h3>
@@ -312,12 +289,8 @@ This is more similar to how the L1 cache works on a CPU, in which the cache <str
 <blockquote>
 <p><strong>Question 4 for final write-up:</strong> What run time were you able to achieve by exploiting register-level reuse? How did you choose to partition work across CUDA threads and across time? Was your partitioning strategy affected at all by considerations related to bank conflicts or cache line effects? Were there any numerical parameters you needed to tune, and if so, how did you choose their values? When you inspect the generated SASS assembly for your kernel, do you see evidence of register-level reuse? Finally, optionally – do you have any ideas for how we might be able to optimize this kernel further in the next few labs?</p>
 </blockquote>
-<h2>Deliverables</h2>
-<h3>Checkpoint (Due Monday, September 30, 11:59pm)</h3>
-<p>Because this lab was released a day later than usual, we’re not requiring you to do much for the checkpoint to get full credit. Ideally, we’d like you to <strong>try answering Question 1</strong> in Part 1 (“Analysis”), and <strong>see how far you can get</strong> on the code for Parts 2 and 3.</p>
-<p>On the Gradescope assignment for “Lab 4 Checkpoint,” (<a href="https://www.gradescope.com/courses/849967/assignments/5072213/">link</a>) submit your answers to the prompts checking in about how you’re doing with the lab.</p>
-<h3>Final Submission (Due Friday, October 4, 11:59pm)</h3>
-<p>On the Gradescope assignment “Lab 4 Final,” (<a href="https://www.gradescope.com/courses/849967/assignments/5072328/">link</a>) submit your completed code for <code>matmul.cu</code>, as well as a PDF write-up containing your answers to Questions 1 - 4.</p>
+<h2>Acknowledgments</h2>
+<p>Much of the content in Lab 4 and Lab 5 in this course was adapted from Simon Boehm’s article “<a href="https://siboehm.com/articles/22/CUDA-MMM">How to Optimize a CUDA Matmul Kernel for cuBLAS-like Performance</a>,” which the course staff found to be an exceptionally useful reference when learning about this material themselves.</p>
 <hr />
 <div class="footnote-definition" id="llvm"><sup class="footnote-definition-label">1</sup>
 <p>If you’re familiar with <a href="https://llvm.org/docs/LangRef.html">LLVM IR</a>, you can think of PTX as operating at approximately the same level of abstraction. In particular, PTX represents programs in terms of instructions operating on an unbounded set of virtual registers, rather than a finite set of architectural registers. Register allocation is handled in the PTX-to-SASS compilation step.</p>
@@ -325,7 +298,4 @@ This is more similar to how the L1 cache works on a CPU, in which the cache <str
 <div class="footnote-definition" id="l1_terminology"><sup class="footnote-definition-label">2</sup>
 <p>We’ll use the term “L1” generically to refer to the physical SRAM resource on each SM, which can be used as either an explicitly-addressed shared memory or as an automatically-managed L1 cache.</p>
 </div>
-
-</main>
-</body>
-</html>
+</main></body></html>

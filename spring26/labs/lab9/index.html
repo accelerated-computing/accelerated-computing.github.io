@@ -1,0 +1,705 @@
+
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>Home</title><base href="/spring26/labs/lab9/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
+    font-weight: regular;
+    font-style: regular;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bold.otf") format("opentype");
+    font-weight: bold;
+    font-style: regular;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-italic.otf") format("opentype");
+    font-weight: regular;
+    font-style: italic;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bolditalic.otf") format("opentype");
+    font-weight: bold;
+    font-style: italic;
+}</style><link href="/spring26/assets/main.css" rel="stylesheet"><link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet"><link href="/spring26/assets/favicon.png" rel="icon" type="image/png"></head><body><header><nav><h1><a href="/spring26/">Home</a></h1>
+<p><a href="/spring26/calendar">Calendar</a></p>
+<p><a href="/spring26/labs">Labs</a></p>
+<p><a href="/spring26/lectures">Lectures</a></p>
+<p><a href="/spring26/syllabus">Syllabus</a></p>
+<p><a href="/spring26/resources">Resources</a></p>
+<p><a href="/spring26/contact">Contact</a></p>
+<p><a href="/spring26/piazza">Piazza</a></p>
+</nav></header><main>
+<h1>Lab 9: Bring Your Own Warp Scheduler</h1>
+<h2>Prologue: Logistics</h2>
+<h3>Pair Programming</h3>
+<p>For this lab and the remaining labs in the course, you’ll be working in <strong>teams of
+two</strong>. You’re free to choose your own partner, and we encourage you to find
+someone whose schedule and working style aligns well with yours.</p>
+<h3>Due Dates</h3>
+<p>For this lab, you’ll be turning in the following deliverables:</p>
+<ul>
+<li>
+<p><strong>Checkpoint</strong>: Due Monday, November 3, 11:59 pm. On Gradescope, let us know
+if run into any issues with the H100 Telerun infrastructure, submit your
+responses to the prelab questions (Part 0) with the completed code, and give
+us a brief update on your progress with the rest of the lab.</p>
+</li>
+<li>
+<p><strong>Final Submission</strong>: Due Wednesday, November 12, 11:59 pm. Submit your completed
+code for all parts of the lab, as well as a PDF writeup containing your
+answers to Questions 1-3. Note that this is a longer timeline than usual (a
+week and a half!).</p>
+</li>
+</ul>
+<h3>Starter Code</h3>
+<p>You can get the starter code for this lab by cloning the <a href="https://github.com/accelerated-computing-class/lab9">lab
+repository</a>:</p>
+<pre><code>git clone git@github.com:accelerated-computing-class/lab9.git
+</code></pre>
+<h2>Hello, H100!</h2>
+<p>We’ve spent a lot of time with our RTX 4000 Ada, optimizing the Mandelbrot
+function (<a href="/spring26/labs/lab1">Lab 1</a>, <a href="/spring26/labs/lab2">Lab 2</a>), wave simulations (<a href="/spring26/labs/lab3">Lab
+3</a>), matrix multiplication kernels (<a href="/spring26/labs/lab4">Lab 4</a>, <a href="/spring26/labs/lab5">Lab
+5</a>, <a href="/spring26/labs/lab6">Lab 6</a>), and more irregular access patterns (<a href="/spring26/labs/lab7">Lab
+7</a>, <a href="/spring26/labs/lab8">Lab 8</a>). Along the way, you have learned about
+memory coalescing, shared memory bank conflicts, asynchronous operations,
+coarse-grained operations like tensor core instructions, and warp-level
+primitives. By now, you’re familiar with most of what the Ada architecture has
+to offer.</p>
+<p>With that foundation in place, it’s time to turn our attention to the <strong>NVIDIA
+H100 SXM5 GPU</strong>.</p>
+<p>The H100 builds on many of the same fundamental ideas we’ve seen, but the end
+result is is different from our RTX 4000 Ada in many ways, both
+in its compute and memory hierarchy:</p>
+<ul>
+<li>
+<p>With <strong>132 SMs</strong>, the H100 SXM5 has nearly 3x the streaming multiprocessors
+compared to the Ada’s 48 SMs.</p>
+</li>
+<li>
+<p>The <strong>DRAM</strong> is now <strong>80 GB of HBM3</strong> with <strong>3.3 TB/s of memory
+bandwidth</strong>. Over the 360 GB/s bandwidth on the Ada, this is an appreciable
+9.1x increase in DRAM bandwidth.</p>
+</li>
+<li>
+<p>The <strong>L2 cache</strong> has grown to <strong>50 MB</strong> with <strong>12 TB/s of memory bandwidth</strong>.
+On the Ada, the L2 cache was 48 MB with a bandwidth of about 2.4 TB/s.</p>
+</li>
+<li>
+<p>There is <strong>256 KB of SRAM-per-SM</strong> with a bandwidth of <strong>33 TB/s</strong>, compared
+to 13.4 TB/s on the Ada.</p>
+</li>
+<li>
+<p>Like before, the SRAM-per-SM can be partitioned into shared memory and the
+L1 cache. A <strong>maximum of 227 KB</strong> is available for <strong>shared memory</strong>, a 78%
+increase over the existing 128 KB on the Ada.</p>
+</li>
+<li>
+<p>Each warp scheduler has <strong>64 KB of SRAM</strong> used as register file storage,
+same as the Ada.</p>
+</li>
+</ul>
+<p><img src="images/H100.png" alt="" /></p>
+<div style="text-align: center;"><i>
+<p>H100 architecture, based on the description by <a href="https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/">NVIDIA</a></p>
+<p></i></div></p>
+<p><img src="images/H100_mem_hierarchy.png" alt="" /></p>
+<div style="text-align: center;"><i>H100 memory hierarchy</i></div>
+<p>Beyond the quantitative differences in compute resources and memory capacity,
+the H100 introduces two new features: the <strong>Tensor Memory Accelerator</strong>
+and <strong>warp group-level matrix multiply instructions</strong>.</p>
+<p>The first feature, the <strong>Tensor Memory Accelerator (TMA)</strong>, is an <strong>asynchronous
+hardware copy engine</strong> that builds on the same principle of overlapping memory
+movement with other useful work that we explored in <a href="/spring26/labs/lab5">Lab 5</a> and <a href="/spring26/lectures/">Lecture 5</a>.
+However, unlike the <code>cp.async</code> instructions from <a href="/spring26/labs/lab5">Lab 5</a> that
+operate on small chunks of up to 16 contiguous bytes, TMA operates at <strong>tile granularity</strong>,
+allowing you to transfer entire multidimensional tiles (up to 5D, and up to 256 elements on a side) between global
+and shared memory in a single operation. It is a <strong>coprocessor</strong> that runs
+alongside the main processor: a <strong>single lane issues a TMA operation</strong> by
+providing a descriptor that specifies the data’s dimensions and layout , and from
+that point on, the TMA engine handles all data movement independently <strong>without
+consuming any more registers or instruction issue slots</strong>. That is, once the TMA
+instruction is issued, the TMA engine <strong>automates address computation</strong>,
+handling all the strided offsets and multidimensional indexing in hardware.</p>
+<p>The second feature, the <strong>warp group-level matrix multiply</strong> (<code>wgmma</code>)
+instruction, extends the tensor core instructions we used in <a href="/spring26/labs/lab6">Lab
+6</a>. In Lab 6, the tensor core instructions (<code>mma</code>) operated on a
+single warp (32 lanes), allowing us to compute small matrix tiles in
+a single instruction. The <code>wgmma</code> instruction scales this up to operate on a
+<strong>warp group</strong> — 4 warps working together for a total of 128 lanes. This allows
+even larger matrix tiles to be computed in a single coarse-grained operation,
+improving data reuse. Moreover, unlike the <code>mma</code> instruction, <code>wgmma</code> is
+<strong>asynchronous</strong>, enabling the warp group to issue the matrix multiply and
+immediately continue with other work while the computation completes in the
+background.</p>
+<blockquote>
+<p><strong>Prelab Question 0:</strong> Run <code>hello-h100.cu</code> using the new telerun infrastructure:</p>
+<pre><code>uvx telerun submit hello-h100.cu
+</code></pre>
+<p>If you have not used <code>uvx</code> to run telerun before, take a look at the Piazza
+post <a href="https://piazza.com/class/mepeowldc8t43v/post/162">here</a>.</p>
+<p>(Note: you may see comments like <code>// TL+ {"platform": "h100"}</code>, <code>// TL+ {"compile_flags": ["-lcuda"]}</code>, etc. at the top of the file. These comments
+tell telerun which machine to run on, whether to include any headers, or add
+any compiler flags. You should not need to change these comments)</p>
+<p>Check the output to verify that your code ran on an H100. Were you able to
+successfully run code on the H100? If you encountered any issues, please
+describe them.</p>
+</blockquote>
+<p>During this lab and the next, we’ll learn how to use the TMA and <code>wgmma</code>
+to build a fast matrix multiplication kernel for the H100.</p>
+<h2>Goals for This Lab</h2>
+<p>The focus of this lab is to get comfortable with the H100 and understand how to
+use the TMA to overlap computation and memory movement. By the end,
+we’ll have implemented a software pipeline that coordinates multiple warps to
+hide memory latency, essentially building our own warp scheduler in software.</p>
+<p>This lab has six parts:</p>
+<ul>
+<li>
+<p><strong>Part 0 (Prelab)</strong> introduces the interface for <strong>moving data from global
+to shared memory</strong> using the TMA, implementing a <strong>1 block, 1 lane, 1
+tile TMA load</strong> using staff-provided interfaces.  This involves
+learning how to use <strong>split barriers</strong>, which are crucial for coordinating TMA
+operations.</p>
+</li>
+<li>
+<p><strong>Part 1</strong> covers <strong>moving data from shared to global memory</strong>. This will
+require you to learn the commit group completion mechanism that TMA uses for
+shared-to-global transfers.</p>
+</li>
+<li>
+<p><strong>Part 2</strong> asks you to <strong>design a TMA reduce interface</strong> and use
+it to perform a reduction while moving data from global to shared memory.</p>
+</li>
+<li>
+<p><strong>Part 3</strong> involves <strong>writing a TMA-based <code>memcpy</code></strong> kernel that achieves peak
+memory bandwidth on the H100.</p>
+</li>
+<li>
+<p><strong>Part 4</strong> is the main challenge: <strong>implementing your own warp scheduler</strong>
+using the TMA engine. Here, the constraint is that only one block can be
+active per SM, which means all parallelism must come from coordinating
+multiple warps within that block. To maintain high throughput, you’ll need
+to carefully orchestrate how these warps overlap their work.</p>
+</li>
+<li>
+<p><strong>Part 5</strong> serves as a transition to the next lab, and <strong>explores swizzling
+patterns</strong> for shared memory layouts. These patterns help avoid shared memory
+bank conflicts, and understanding them will be crucial for the next lab on
+<code>wgmma</code>.</p>
+</li>
+</ul>
+<h2>Part 0: Single-Block, Single-Lane, Single-Tile TMA Load</h2>
+<p>As mentioned earlier, TMA is a  <strong>hardware copy engine, or coprocessor</strong> that
+asynchronously moves data at <strong>tile granularity</strong>. Using the TMA has five key
+benefits:</p>
+<ol>
+<li>
+<p>TMA can help <strong>overlap memory and compute</strong>. TMA loads and stores are
+asynchronous, meaning that once a TMA operation is issued, the TMA engine
+handles the data transfer independently while the issuing lane can continue
+with other work.</p>
+</li>
+<li>
+<p>TMA can <strong>free up instruction issue slots</strong>. By operating on entire tiles at
+once, TMA automates the address computation for elements in the tile.
+This means that you no longer need to perform index arithmetic to compute
+offsets into arrays.</p>
+</li>
+<li>
+<p>TMA can <strong>reduce register pressure</strong>. As you no longer need to compute
+individual strides and offsets into your array, you no longer need to store
+them in registers.</p>
+</li>
+<li>
+<p>TMA can <strong>eliminate the need for manual bounds checking</strong>. It can
+automatically handle accesses to memory outside the tensor bounds by filling
+out-of-bounds elements with either zero or a special NaN value.</p>
+</li>
+<li>
+<p>TMA can <strong>load data in with swizzled formats</strong>. That is, it can automatically
+arrange data in shared memory using specific permutations to avoid bank
+conflicts, eliminating the need for manual rearrangement.</p>
+</li>
+</ol>
+<p>Since the TMA engine is a separate coprocessor, we will need to program it using
+<strong>special instructions</strong> that the coprocessor can understand. To do so, we will
+first need to understand what kinds of instructions it can support.</p>
+<p>The TMA engine can be programmed using four types of instructions:</p>
+<ol>
+<li>
+<p>The TMA engine can <strong>load</strong> data from global memory to shared memory.</p>
+</li>
+<li>
+<p>The TMA engine can <strong>store</strong> data from shared memory to global memory.</p>
+</li>
+<li>
+<p>The TMA engine can <strong>reduce</strong> data from shared memory to global memory,
+performing an element-wise reduction operation (like <code>+</code> or <code>-</code>) with the
+data already present in global memory.</p>
+</li>
+<li>
+<p>The TMA engine can <strong>multicast</strong> data from global memory to shared memory
+across multiple blocks executing on different SMs.</p>
+</li>
+</ol>
+<p>For this part of the lab, we’ll focus on loading data from global memory into
+shared memory. In particular, we’ll launch a kernel with a single block and a
+single lane, where the goal is to successfully move a single tile from global
+memory into shared memory using a TMA load instruction, and then store the
+result back into another location in global memory using regular CUDA.</p>
+<h3>Setting up a Tensor for TMA Load</h3>
+<p>To move tiles of data, the TMA engine needs to be able to answer a few questions
+about our data: Where is it in memory? How is it laid out? What tile size
+should each transfer use?</p>
+<p>We provide this information through a <strong>tensor descriptor</strong>. The tensor descriptor
+tells the TMA engine how our data is laid out in memory, and at what granularity
+we would like to load it. Unlike most CUDA operations that are configured
+entirely on the device, the tensor descriptor setup happens on the <strong>host</strong>. We
+create a descriptor on the CPU side that describes the structure of our tensor,
+and then pass this descriptor to the kernel where it can be used to initiate TMA
+operations.</p>
+<p>To prepare an array for TMA transactions, you’ll need to use the
+<a href="https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__TENSOR__MEMORY.html#group__CUDA__TENSOR__MEMORY_1ga7c7d2aaac9e49294304e755e6f341d7"><code>cuTensorMapEncodeTiled</code></a>
+function from the CUDA Driver API. This function creates a <code>CUtensorMap</code> object
+that encodes the information TMA needs to know about your tensor’s layout
+and how you want to access it in tiles.</p>
+<pre><code>CUresult cuTensorMapEncodeTiled (
+    CUtensorMap* tensorMap,
+    CUtensorMapDataType tensorDataType,
+    cuuint32_t tensorRank,
+    void* globalAddress,
+    const cuuint64_t* globalDim,
+    const cuuint64_t* globalStrides,
+    const cuuint32_t* boxDim,
+    const cuuint32_t* elementStrides,
+    CUtensorMapInterleave interleave,
+    CUtensorMapSwizzle swizzle,
+    CUtensorMapL2promotion l2Promotion,
+    CUtensorMapFloatOOBfill oobFill )
+</code></pre>
+<p>Setting up a tensor map requires specifying <strong>six key parameters</strong> that you
+will use in this part, which describe the tensor’s
+structure and how to break it into tiles:</p>
+<ol>
+<li>
+<p><strong><code>tensorDataType</code></strong> — The underlying datatype of the tensor. For this lab,
+we will be operating on <code>bf16</code>.</p>
+</li>
+<li>
+<p><strong><code>tensorRank</code></strong> — The number of dimensions in your tensor. A 1D array has
+rank 1, a 2D matrix has rank 2, a 3D volume has rank 3, and so on.</p>
+</li>
+<li>
+<p><strong><code>globalDim</code></strong> — An array that describes the full size of your tensor in
+each dimension. For a 2-dimensional, row-major <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1024</mn><mo>×</mo><mn>2048</mn></mrow><annotation encoding="application/x-tex">1024 \times 2048</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">1024</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">2048</span></span></span></span> matrix, this
+would be <code>{2048, 1024}</code>. Please note that <code>globalDim</code> orders the dimensions
+from fastest to slowest moving.</p>
+</li>
+<li>
+<p><strong><code>globalStrides</code></strong> — An array of size <code>tensorRank - 1</code> that describes how
+memory is laid out in <strong>global memory</strong> (in the same order as
+<code>globalDim</code>).Specifically, how many <strong>bytes</strong> you skip to move one step along
+each dimension. For a row-major 2D array of floats (4 bytes each) of dimension
+<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1024</mn><mo>×</mo><mn>2048</mn></mrow><annotation encoding="application/x-tex">1024 \times 2048</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">1024</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">2048</span></span></span></span> columns, moving to the next row requires skipping <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2048</mn><mo>×</mo><mn>4</mn><mo>=</mo><mn>8192</mn></mrow><annotation encoding="application/x-tex">2048 × 4 =
+8192</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">2048</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">4</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">8192</span></span></span></span> bytes, so the stride would be <code>{8192}</code>. Note that this array has size
+<code>tensorRank - 1</code> because TMA assumes the fastest-moving dimension (the first
+dimension in <code>globalDim</code>) has a stride of 1 element, meaning elements are
+contiguous in memory.</p>
+</li>
+<li>
+<p><strong><code>boxDim</code></strong> — An array that specifies the tile size, or how many elements to
+transfer along each dimension in a single TMA operation, specified in the same order as
+<code>globalDim</code>. For example, <code>{16, 16}</code> means you’re loading 16×16 tiles at a time.
+Importantly, each dimension of the <code>boxDim</code> array <strong>must be less than or equal
+to 256</strong>, and there are stricter size constraints depending on the other
+parameters that you choose. For this lab, (where we will not worry about the
+<code>interleave</code> parameter), these dimensions must 16 byte-aligned.</p>
+</li>
+<li>
+<p><strong><code>elementStrides</code></strong> — An array that specifies the stride pattern in <strong>shared
+memory</strong> for the loaded elements in each dimension, measured in <strong>elements</strong>
+(not bytes). Confusingly, this means something completely different from
+<code>globalStrides</code>! Generally, this is all 1s (meaning consecutive placement), but
+you could set it to <code>{2, 1}</code> to place elements with a stride of 2 elements in
+the first dimension in shared memory, creating gaps between elements.</p>
+</li>
+</ol>
+<p>The <code>cuTensorMapEncodeTiled</code> function also takes several other parameters (like
+<code>interleave</code>, <code>swizzle</code>, <code>l2Promotion</code>, and <code>oobFill</code>) that control features like
+shared memory layout optimization and cache behavior. For now, we’ll use the folllowing
+values for these fields:</p>
+<ul>
+<li><code>interleave</code> should be set to <code>CU_TENSOR_MAP_INTERLEAVE_NONE</code></li>
+<li><code>swizzle</code> should be set to <code>CU_TENSOR_MAP_SWIZZLE_NONE</code></li>
+<li><code>l2Promotion</code>should be set to <code>CU_TENSOR_MAP_L2_PROMOTION_NONE</code></li>
+<li><code>oobFill</code> should be set to <code>CU_TENSOR_MAP_FLOAT_OOB_FILL_NONE</code></li>
+</ul>
+<p><strong>Note:</strong> The <code>oobFill</code> parameter is worth mentioning since it highlights a
+benefit of using the TMA. When a TMA operation attempts to access memory outside
+the bounds of your tensor, TMA can <strong>automatically handle this by filling
+out-of-bounds elements with either zero or a special NaN value</strong>, eliminating the
+need for manual bounds checking in your kernel.</p>
+<blockquote>
+<p><strong>Suggested Check-in:</strong> Try setting up the <code>CUtensorMap</code> for the tensor in the
+starter code. Even though you are not actually using it in a complete kernel
+yet, it’s helpful to check whether CUDA raises any errors. It’s easy to set up
+incorrect descriptors, and catching errors early will save debugging time
+later. You may find it usefull to refer to
+<a href="https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__TENSOR__MEMORY.html#group__CUDA__TENSOR__MEMORY_1ga7c7d2aaac9e49294304e755e6f341d7"><code>cuTensorMapEncodeTiled</code></a>’s
+documentation. Don’t forget to call <code>cuda_check</code> on your setup to actually
+test whether it is valid.</p>
+</blockquote>
+<p>Now that we the tensor descriptor, let’s look at the interface for the load
+function provided in <code>0-tma-single-load.cu</code> to see how to actually pass it in:</p>
+<pre><span class="highlight-source highlight-c++"><span class="highlight-meta highlight-template highlight-c++"><span class="highlight-storage highlight-type highlight-template highlight-c++">template</span> <span class="highlight-punctuation highlight-section highlight-generic highlight-begin highlight-c++">&lt;</span></span><span class="highlight-meta highlight-template highlight-c++"><span class="highlight-storage highlight-type highlight-c">int</span> TILE_M<span class="highlight-punctuation highlight-separator highlight-c++">,</span> <span class="highlight-storage highlight-type highlight-c">int</span> TILE_N</span><span class="highlight-meta highlight-template highlight-c++"><span class="highlight-punctuation highlight-section highlight-generic highlight-end highlight-c++">&gt;</span></span>
+__global__ <span class="highlight-storage highlight-type highlight-c">void</span> <span class="highlight-meta highlight-function highlight-c++"><span class="highlight-entity highlight-name highlight-function highlight-c++">single_tma_load</span></span><span class="highlight-meta highlight-function highlight-parameters highlight-c++"><span class="highlight-meta highlight-group highlight-c++"><span class="highlight-punctuation highlight-section highlight-group highlight-begin highlight-c++">(</span></span></span><span class="highlight-meta highlight-function highlight-parameters highlight-c++"><span class="highlight-meta highlight-group highlight-c++">__grid_constant__ <span class="highlight-storage highlight-modifier highlight-c++">const</span> CUtensorMap <span class="highlight-variable highlight-parameter highlight-c++">src_map</span><span class="highlight-punctuation highlight-separator highlight-c++">,</span> 
+                                bf16 <span class="highlight-keyword highlight-operator highlight-c">*</span><span class="highlight-variable highlight-parameter highlight-c++">dest</span><span class="highlight-punctuation highlight-section highlight-group highlight-end highlight-c++">)</span></span></span><span class="highlight-meta highlight-function highlight-c++"> </span><span class="highlight-meta highlight-function highlight-c++"><span class="highlight-meta highlight-block highlight-c++"><span class="highlight-punctuation highlight-section highlight-block highlight-begin highlight-c++">{</span></span></span><span class="highlight-meta highlight-function highlight-c++"><span class="highlight-meta highlight-block highlight-c++">
+    <span class="highlight-comment highlight-block highlight-c"><span class="highlight-punctuation highlight-definition highlight-comment highlight-c">/*</span> TODO: your TMA load code here... <span class="highlight-punctuation highlight-definition highlight-comment highlight-c">*/</span></span>
+</span></span><span class="highlight-meta highlight-function highlight-c++"><span class="highlight-meta highlight-block highlight-c++"><span class="highlight-punctuation highlight-section highlight-block highlight-end highlight-c++">}</span></span></span>
+</span></pre>
+<p>The tensor map you set up using <code>cuTensorMapEncodeTiled</code> is of type
+<code>CUtensorMap</code>, and you can pass it directly to your GPU global kernel. You may
+notice the
+<a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#grid-constant"><code>__grid_constant__</code></a>
+qualifier. In general, this qualifier indicates that a parameter is is “constant
+for the entire grid”. When passing a <code>CUtensorMap</code>, you <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#asynchronous-data-copies-using-the-tensor-memory-accelerator-tma">must mark
+it</a>
+as a <code>const __grid_constant__</code> parameter.</p>
+<p>After setting up the tensor map on the host and calling the kernel with the
+tensor map passed in, we can begin issuing TMA load operations from within the
+kernel. The specific TMA instruction you use depends on the dimensionality of
+the tensor. There are different instructions for 1D, 2D, 3D tensors, and so on,
+matching the <code>tensorRank</code> you specified when creating the tensor map.</p>
+<p>When you issue a TMA load instruction, you will need to pass the tensor
+descriptor to the TMA co-processor along with the coordinates of the tile you
+want to load. Using the information embedded in the tensor descriptor, and the
+coordinates you want to load, the TMA engine can figure how much data to load
+and where the data lives.</p>
+<p>Before we dive into the TMA instructions themselves, we need to address a
+critical question: since TMA operations are asynchronous, <strong>how do we know when a
+TMA transfer has finished?</strong>  This is where <strong>split barriers</strong> come in.</p>
+<h3>Synchronizing TMA global-to-shared transfers</h3>
+<p>To synchronize TMA transfers for global-to-shared loads, we will need to use
+<strong>split barriers</strong> (also called <code>mbarriers</code> in CUDA). Before exploring how split
+barriers work with the TMA, it’s helpful to understand what makes them different
+from <code>__syncthreads()</code>, the synchronization primitive we’ve used the most so
+far.</p>
+<p>Traditional synchronization points like <code>__syncthreads()</code> and <code>__syncwarp()</code> are
+what we might call <strong>join barriers</strong>: they combine arrival and waiting into a
+single atomic operation. When you call <code>__syncthreads()</code>, every thread both
+announces its arrival and waits for all other threads to arrive before
+continuing. The set of participating threads is encoded in the instruction
+itself and cannot be changed at runtime.</p>
+<p>A <strong>split barrier</strong>, in contrast, <strong>decouples the
+concepts of <em>arrival</em> and <em>waiting</em></strong>. With an
+<code>mbarrier</code>, lanes can arrive at the barrier at one point in the program and
+wait for completion at a different point, potentially doing useful work in
+between. Moreover, you can configure at <strong>runtime</strong> how many arrivals are
+needed for the barrier to complete, giving you the flexibility to synchronize an
+arbitrary subset of lanes.</p>
+<p><img src="images/split_barrier.svg" alt="" /></p>
+<div style="text-align: center;"><i>A sample runtime execution of split barriers.</i></div>
+<p>CUDA provides split barriers through the <code>mbarrier</code> primitive. At its core, an
+<code>mbarrier</code> is a counter-based synchronization mechanism. When you initialize an
+<code>mbarrier</code>, you specify an <strong>arrival count</strong> — the number of lanes that must
+“check in” before the barrier releases. As each lane completes its work and
+arrives at the barrier, the counter increments. Once the arrival count is
+reached, any lanes waiting on the barrier are released and can proceed with
+their next phase of work.</p>
+<p>This basic arrival-counting mechanism is useful on its own, but <code>mbarrier</code>s have
+an additional capability specifically designed for TMA operations: they can
+track <strong>bytes arriving via asynchronous transfers</strong>.</p>
+<p>When coordinating with TMA, you first tell the <code>mbarrier</code> how many <strong>bytes to
+expect</strong> via an asynchronous transfer. Then, when you issue a TMA operation, you
+<strong>attach</strong> it to the <code>mbarrier</code>. The barrier then tracks both conditions
+simultaneously:</p>
+<ol>
+<li>How many lanes have arrived at the barrier?</li>
+<li>How many bytes have been transferred by TMA?</li>
+</ol>
+<p>The barrier will only release waiting lanes once <strong>both</strong> conditions are
+satisfied. This dual-tracking capability is what makes <code>mbarrier</code>s especially
+useful for TMA synchronization. Split barriers can ensure that lanes don’t
+proceed to use data until it has actually arrived in shared memory, while still
+allowing the flexibility to have different subsets of lanes coordinate on
+different transfers.</p>
+<p>Alongside the lab writeup, we have also released a guide that explains the
+interfaces provided as part of this lab, and how they map to the general
+concepts introduced in this section. At this point, we recommend you read the
+guide to understand how to initialize mbarriers, coordinate their arrivals, and
+use them to track TMA completion:</p>
+<p>&gt;&gt;&gt; <strong><a href="../../resources/tma-interface/">TMA Interface Reference</a></strong> &lt;&lt;&lt;</p>
+<blockquote>
+<p><strong>Deliverable, Prelab:</strong> Using the <a href="../../resources/tma-interface">staff-provided
+interfaces</a>, implement a <strong>single block, single
+lane, single tile</strong> TMA transfer from global memory to shared memory in <code>0-tma-single-load.cu</code>. After
+the data has been loaded into shared memory, store the tile back into a global
+array (you are allowed to use normal CUDA for stores). <strong>Note:</strong> For this part
+of the lab, you should not need to worry about phases (explained in the Interface Reference).</p>
+</blockquote>
+<h2>Part 1: Single-Block, Single-Lane, Single-Tile TMA Store</h2>
+<p>In Part 0, you learned how to use TMA to load data from global memory into
+shared memory, using split barriers (<code>mbarrier</code>s) to track when the asynchronous
+transfer completes. Now it’s time to look at the other direction: <strong>storing data
+from shared memory back to global memory</strong> using TMA.</p>
+<p>At first glance, you might expect TMA stores to work equivalently to TMA loads. As
+it turns out, TMA stores use a <strong>completely different completion tracking
+mechanism</strong> than TMA loads. While loads rely on split barriers to signal when
+data has arrived in shared memory, stores use <strong>commit
+groups</strong> to track when data has been successfully written out to global memory.
+You may remember this mechanism from <a href="/spring26/labs/lab5">Lab 5</a>, where we first used
+it for asynchronous operations. You can refer back to <a href="/spring26/labs/lab5">Lab 5</a> and read
+the documentation provided in <a href="../../resources/tma-interface/">TMA Interface Reference</a>
+to understand commit groups in more detail.</p>
+<p>A natural question you may have is why the difference in completion mechanisms?
+For loads, the <code>mbarrier</code> lives in shared memory alongside the destination data,
+so the TMA engine can easily update the barrier as data arrives. For stores,
+however, the hardware would need to propagate completion information from global
+memory back to the <code>mbarrier</code> in shared memory, resulting in a “round-trip”
+through the memory hierarchy that is difficult to implement efficiently in
+hardware. Therefore, stores use a different, non-<code>mbarrier</code> based completion
+mechanism.</p>
+<blockquote>
+<p><strong>Deliverable:</strong> In <code>1-tma-single-store.cu</code>, replace the hand-written store from
+Part 0 with TMA store instructions. You’ll need to set up a <code>CUtensorMap</code> for
+the <code>dst</code> array.</p>
+</blockquote>
+<h2>Part 2: Single-Block, Single-Lane, Single-Tile TMA Reduce</h2>
+<p>So far, you’ve used TMA to move data between global and shared memory. But TMA
+can do more than just copy data. It also supports <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-asynchronous-copy">reduction
+operations</a>
+that combine data movement with computation.</p>
+<p>TMA reduce operations work like TMA stores, but instead of simply writing values
+from shared memory to global memory, they <strong>perform a reduction</strong>
+between the values being written and the values already present in global
+memory. For example, a TMA reduce with the <code>min</code> operation will compute the
+elementwise minimum between the tile in shared memory and the corresponding tile
+in global memory, storing the result back to global memory. By using TMA reduce
+to atomically update global memory with the combined result in a single
+operation, and can <strong>eliminate a pass</strong> over the data.</p>
+<h3>Writing Your Own TMA Interface</h3>
+<p>In Parts 0 and 1, you used staff-provided interfaces to issue TMA operations.
+For this part, you’ll write your own TMA reduce interface for the <code>add</code>
+operation using inline PTX assembly. We’ve provided a function skeleton called
+<code>cp_async_reduce_add_bulk_tensor_2d_shared_to_global</code> that you’ll need to fill in with
+the appropriate inline assembly instruction.</p>
+<p>The PTX will look similar to the TMA store instructions you’ve seen before, but
+you will need to
+<a href="https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-asynchronous-copy">find</a>
+and use the correct reduction instruction variant from this section of the PTX docs.</p>
+<blockquote>
+<p><strong>Deliverable.</strong> In the provided starter code, implement the
+<code>cp_async_reduce_add_bulk_tensor_2d_shared_to_global</code> function using inline PTX
+assembly to perform a TMA reduce with the <code>add</code> operation. Then, write a
+simple kernel in <code>2-tma-single-reduce.cu</code> that uses this function to reduce a
+tile from shared memory to global memory. Like Parts 0 and 1, this should be
+a single-block, single-lane, single-tile kernel, so you should be able to
+reuse most of your setup code from the previous parts.</p>
+</blockquote>
+<h2>Part 3: A TMA-only <code>memcpy</code> Kernel</h2>
+<p>Now that you’re comfortable with TMA operations, it’s time to put this knowledge
+to the test by implementing a practical kernel that achieves high memory
+bandwidth.</p>
+<p>In the <a href="#hello-h100">introduction</a>, we mentioned that the H100’s DRAM bandwidth
+is around 3.3 TB/s. In <code>memcpy.cu</code>, we’ve provided a baseline <code>memcpy</code> kernel that
+uses standard coalesced vector loads to achieve around <strong>2.1 TB/s</strong> of
+bandwidth. Your task is to implement a TMA-based <code>memcpy</code> kernel that matches or
+exceeds this performance.</p>
+<p>Unlike Parts 0 through 2, where you worked with a single block and a single
+lane, achieving high bandwidth requires you to saturate the entire GPU. This
+means you’ll need to launch <strong>multiple blocks</strong> and have each block process
+<strong>multiple tiles</strong>. To handle multiple tiles per block, you’ll need to
+<strong>carefully manage the <a href="../../resources/tma-interface/">phase bit</a></strong> in your
+split barriers, tracking which phase each barrier is in as you iterate through
+tiles.</p>
+<p>Some things to consider as you implement your kernel:</p>
+<ul>
+<li>
+<p><strong>Tile granularity.</strong> What size should each TMA transfer be? Larger tiles mean
+fewer TMA operations, but require more shared memory per block.</p>
+</li>
+<li>
+<p><strong>Shared memory allocation.</strong> How much shared memory should each block
+allocate? Do you need to double-buffer to overlap loads and stores?</p>
+</li>
+<li>
+<p><strong>Phase management.</strong> When do you need to flip the phase bit? How do you track
+which phase each barrier is in?</p>
+</li>
+<li>
+<p><strong>Lane utilization.</strong> How many lanes are actually doing useful work in
+your kernel? Remember that TMA operations only need a single lane to issue
+them.</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>Deliverable.</strong> In <code>3-tma-memcpy.cu</code>, implement a TMA-based <code>memcpy</code> kernel that
+achieves at least 2.1 TB/s of bandwidth, matching or exceeding the baseline
+kernel.</p>
+</blockquote>
+<blockquote>
+<p><strong>Question 1 for final write-up.</strong> What bandwidth were you able to achieve
+with your TMA <code>tma_copy</code> kernel? How did you approach phase bit management? What
+tile size did you choose and why? How much shared memory did you allocate per
+block? How many threads were actually doing useful work in your kernel?</p>
+</blockquote>
+<h2>Part 4: Building Your Own Warp Scheduler</h2>
+<p>Throughout the course, we’ve emphasized that one of the primary ways to hide
+memory latency on GPUs is by <strong>oversubscribing the warp schedulers</strong>. By
+launching multiple blocks per SM, the hardware can switch between warps to do
+useful work when one stalls on an operation. For example, in your matrix
+multiplication kernels from <a href="/spring26/labs/lab4">Lab 4</a> through <a href="/spring26/labs/lab6">Lab 6</a>, you
+had to carefully manage shared memory usage per block to maximize occupancy,
+ensuring that multiple blocks could run concurrently on each SM.</p>
+<p>In Part 3, you likely relied on this same principle. By launching multiple
+blocks, the hardware scheduler could automatically hide latency by switching
+between warps from different blocks whenever memory operations stalled.</p>
+<p>For this part, you’ll work under a new constraint. You must launch kernels where
+each block uses the <strong>maximum shared memory available</strong> on the H100 (227 KB per
+block). With this much shared memory per
+block, you can only fit <strong>one block per SM</strong>. This means the hardware can no
+longer hide latency by switching between blocks. Instead, all parallelism must
+come from <strong>coordinating multiple warps within a single block</strong>.</p>
+<p>In essence, you’re building your own warp scheduler in software. You need to
+orchestrate how different warps within the block overlap their memory
+operations, manually implementing the kind of latency hiding that the hardware
+scheduler would normally handle automatically when multiple blocks are active.</p>
+<blockquote>
+<p><strong>Deliverable.</strong> Implement the <code>tma_multiwarp_pipeline</code> kernel in
+<code>4-warp-scheduler.cu</code> that uses the full 227 KB of shared memory per block and
+achieving at least 2.4 TB/s of bandwidth through software-managed warp
+coordination.</p>
+</blockquote>
+<blockquote>
+<p><strong>Question 2 for final write-up.</strong> How many warps did you have active per
+block? How did you partition work between them? How many barriers did you
+allocate in shared memory, and how did you manage phase bits across different
+warps? What performance did you achieve compared to a version that doesn’t use
+the full shared memory capacity?</p>
+</blockquote>
+<h3>Suggestion for Part 4: The Producer-Consumer Pattern</h3>
+<p>One effective strategy for this kind of coordination is a <strong>producer-consumer
+pattern</strong>. You can have one or more “producer” warps that issue TMA loads to
+bring data into shared memory, while “consumer” warps process that data and
+issue TMA stores to write results back. By carefully coordinating these warps
+with split barriers, you can overlap the producers’ memory operations with the
+consumers’ storage.</p>
+<p>However, this coordination is more complex than it might first appear. Each warp
+may be working on different tiles at different points in time, which means
+they’ll be in different phases of their respective pipelines. You’ll need to
+think carefully about how to partition shared memory between warps, how many
+barriers you need to allocate, and how to track phase bits for each warp’s
+independent progress through the data.</p>
+<p>Some things to consider as you design your warp scheduler:</p>
+<ul>
+<li>
+<p><strong>Shared memory partitioning.</strong> How will you divide the 227 KB of shared
+memory between different warps?</p>
+</li>
+<li>
+<p><strong>Barrier allocation.</strong> How many split barriers do you need?</p>
+</li>
+<li>
+<p><strong>Phase bit management.</strong> How do you track phase bits when different warps may
+be at different stages of the pipeline?</p>
+</li>
+<li>
+<p><strong>Work distribution.</strong> How many warps should be producers versus consumers?
+What’s the optimal ratio?</p>
+</li>
+</ul>
+<p>This strategy of assigning different roles to different warps within a block is
+known as <strong>warp specialization</strong>. We first introduced this pattern in <a href="/spring26/labs/lab5">Lab
+5</a>, where you overlapped compute with data movement using
+asynchronous copies.</p>
+<h2>Part 5: Understanding Swizzling Patterns</h2>
+<p>You’ve now built up substantial experience with TMA, from simple single-tile
+transfers to coordinating complex multi-warp pipelines. Before we wrap up,
+there’s one more TMA feature worth exploring that will be crucial for the next
+lab.</p>
+<h3>Swizzling for Bank Conflict Avoidance</h3>
+<p>In <a href="/spring26/labs/lab4">Lab 4</a>, shared memory bank conflicts were a persistent
+performance concern while implementing a fast matrix multiplication kernel. When
+multiple lanes in a warp tried to access different addresses that map to the
+same memory bank, those accesses were be serialized, reducing effective
+bandwidth. You may have worked around this by transposing data or adding padding
+to your shared memory layouts.</p>
+<p>It turns out that avoiding bank conflicts through careful memory layout is such
+a common requirement that TMA provides hardware support for it. When you set up
+a tensor map, you can specify a <strong>swizzle pattern</strong> that automatically permutes
+how data is stored in shared memory. This can eliminate bank conflicts without
+requiring you to manually restructure your data or add padding.</p>
+<h3>Reverse-Engineering TMA Swizzle Patterns</h3>
+<p>Rather than trying to decode the swizzle patterns from the PTX documentation,
+we’ll take a more hands-on approach (in fact, the swizzle PTX documentation was
+even <a href="https://hazyresearch.stanford.edu/blog/2024-05-12-tk">incorrect</a> for a
+while!). In this part, we will try to figure out the actual behavior of the
+hardware by observing how it behaves in parctice.</p>
+<p>We will be focusing on the <code>CU_TENSOR_MAP_SWIZZLE_64B</code> setting, and examine the
+resulting shared memory layout to reverse-engineer how TMA swizzles the data.</p>
+<p>In the  <code>CU_TENSOR_MAP_SWIZZLE_64B</code> pattern, data is swizzled within a 64 byte
+chunk of memory at a granularity of 16 bytes at a time.</p>
+<p>To understand this, imagine dividing a 64-byte array into 4 chunks of 16
+bytes each, numbered 0, 1, 2, 3. The swizzle applies some permutation function
+that rearranges these chunks before storing them in shared memory. For example,
+the permutation might reorder them as 0, 2, 1, 3 instead of the original 0, 1,
+2, 3. Your task is to reverse-engineer what this permutation function actually
+does by observing the hardware’s behavior.</p>
+<p>A quirk of swizzling using the TMA is that the swizzling pattern depends on the
+<strong>physical address of the shared memory</strong> where you load the data. For
+<code>CU_TENSOR_MAP_SWIZZLE_64B</code>, the swizzle pattern repeats every 512 bytes. Since
+shared memory arrays must be 128-byte aligned, there are four distinct 64-byte
+swizzling patterns at 0, 128, 256, and 384-byte offsets.</p>
+<p>We have set up the starter code to load a stripe of <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>×</mo><mn>64</mn></mrow><annotation encoding="application/x-tex">1 \times 64</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">64</span></span></span></span> bytes of
+<code>uint8_t</code> data initialized with values <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo separator="true">,</mo><mn>1</mn><mo separator="true">,</mo><mn>2</mn><mo separator="true">,</mo><mo>…</mo><mo separator="true">,</mo><mn>63</mn></mrow><annotation encoding="application/x-tex">0, 1, 2, \ldots, 63</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8389em;vertical-align:-0.1944em;"></span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner">…</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">63</span></span></span></span> in memory. We provide a visualization
+of the data layout and the 16-byte chunks below (displayed in two lines for readability).</p>
+<p><img src="images/swizzle_input.png" alt="" /></p>
+<blockquote>
+<p><strong>Deliverable.</strong> In <code>5-tma-swizzle.cu</code>, set up a <code>CUtensorMap</code> with
+<code>CU_TENSOR_MAP_SWIZZLE_64B</code> enabled. Use TMA to load data into shared memory,
+then use regular CUDA stores to write the data <strong>unswizzled</strong> to the destination
+array. Your code will be tested under all four offsets (0, 128, 256, 384
+bytes).</p>
+</blockquote>
+<blockquote>
+<p><strong>Question 3 for final write-up.</strong> Can you describe the swizzling pattern you
+observed? Either explain it in words or provide a function that maps from
+unswizzled indices to swizzled indices.</p>
+</blockquote>
+<p>A couple of suggestions to help get started:</p>
+<ol>
+<li>
+<p><strong>Debug Prints</strong>: We will be calling the function with a <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>×</mo><mn>64</mn></mrow><annotation encoding="application/x-tex">1 \times 64</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">64</span></span></span></span> stripe, this is small
+enough that you can print it out once loaded!</p>
+</li>
+<li>
+<p><strong>Memory Addressing</strong>: As the swizzling pattern depends on the address of the shared memory it is
+being loaded into, it might be useful to look at the address directly. Here
+are some questions that can help guide your exploration:</p>
+<ul>
+<li>
+<p>Which physical addresses result in no swizzle (identity mapping)?</p>
+</li>
+<li>
+<p>Which address bits remain constant?</p>
+</li>
+<li>
+<p>Which address bits change?</p>
+</li>
+<li>
+<p>What values do the changing bits take?</p>
+</li>
+</ul>
+</li>
+</ol>
+<h2>Conclusion</h2>
+<p>You’ve reached the end of the TMA lab! You’ve learned how to use one of the
+H100’s most modern features, and even built your own warp scheduler in
+software. In the next lab, we’ll combine TMA with the <code>wgmma</code> instruction to
+build a high-performance matrix multiplication kernel that leverages the full
+capabilities of the H100.</p>
+
+</main>
+</body></html>

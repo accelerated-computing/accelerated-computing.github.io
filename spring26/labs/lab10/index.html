@@ -1,0 +1,405 @@
+
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>Home</title><base href="/spring26/labs/lab10/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
+    font-weight: regular;
+    font-style: regular;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bold.otf") format("opentype");
+    font-weight: bold;
+    font-style: regular;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-italic.otf") format("opentype");
+    font-weight: regular;
+    font-style: italic;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bolditalic.otf") format("opentype");
+    font-weight: bold;
+    font-style: italic;
+}</style><link href="/spring26/assets/main.css" rel="stylesheet"><link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet"><link href="/spring26/assets/favicon.png" rel="icon" type="image/png"></head><body><header><nav><h1><a href="/spring26/">Home</a></h1>
+<p><a href="/spring26/calendar">Calendar</a></p>
+<p><a href="/spring26/labs">Labs</a></p>
+<p><a href="/spring26/lectures">Lectures</a></p>
+<p><a href="/spring26/syllabus">Syllabus</a></p>
+<p><a href="/spring26/resources">Resources</a></p>
+<p><a href="/spring26/contact">Contact</a></p>
+<p><a href="/spring26/piazza">Piazza</a></p>
+</nav></header><main><h1>Lab 10: H100 Matrix Multiplication</h1>
+<h2>Prologue: Logistics</h2>
+<h3>Due Dates</h3>
+<p>For this lab, you’ll be turning in the following deliverables:</p>
+<ul>
+<li>
+<p><strong>Checkpoint</strong>: Due Friday, November 14, 11:59 pm. Submit your completed code for Part 0, your responses to Prelab Questions 1-2, and a discussion of your progress on Part 1.</p>
+</li>
+<li>
+<p><strong>Final Submission</strong>: Due Friday, November 21, 11:59 pm. Submit your completed
+code for all parts of the lab (including Part 0), as well as a PDF writeup containing your
+answers for Question 1 of the final writeup.</p>
+</li>
+</ul>
+<h3>Starter Code</h3>
+<p>You can get the starter code for this lab by cloning the <a href="https://github.com/accelerated-computing-class/lab10">lab
+repository</a>:</p>
+<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">git</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> clone git@github.com:accelerated-computing-class/lab10.git</span>
+</span></pre>
+<h3>Goals for This Lab</h3>
+<p>In <a href="/spring26/labs/lab9">Lab 9</a>, we explored the H100’s Tensor Memory Accelerator (TMA),
+learning how to move data from global to shared memory and building
+software-managed pipelines to hide latency. In this lab, we’ll turn our
+attention to the second major feature of the H100, the <strong>warp-group level tensor
+core instructions</strong>, or <strong><code>wgmma</code></strong>.</p>
+<p>Tensor cores account for the vast majority of our machine’s computational
+capability. On the H100, the tensor cores provide approximately <a href="https://www.hpctech.co.jp/assets/images/info/catalog/pdf/gtc22-whitepaper-hopper_v1.02.pdf#page=26"><strong>1000
+TFLOPs</strong></a>
+of half-precision matrix multiply throughput. To put this in perspective, the
+standard FMA units can run at a half-precision throughput of <a href="https://www.techpowerup.com/gpu-specs/h100-sxm5-80-gb.c3900"><strong>267.6
+TFLOPs</strong></a>. This
+means that almost 80% of our machine’s half-precision throughput comes from
+tensor cores! To write high-performance kernels on the H100, we will need to
+understand how to use these tensor core instructions effectively.</p>
+<p>Like in <a href="/spring26/labs/lab6">Lab 6</a>, using tensor cores will require understanding not
+just how to invoke the instructions themselves, but also how to organize data in
+memory to match the expectations of these specialized units. Ultimately, our
+goal is to combine TMA (for data movement) and <code>wgmma</code> (for compute) to write a
+fast matrix multiplication kernel.</p>
+<p>This lab has two main parts:</p>
+<ol>
+<li>
+<p><strong>Part 0 (Prelab)</strong> introduces the <code>wgmma</code> instruction. You’ll learn how to
+invoke this instruction and set up data for it, working with both swizzled
+and non-swizzled memory formats.</p>
+</li>
+<li>
+<p><strong>Part 1</strong> combines TMA and <code>wgmma</code> to implement a fast matrix multiplication
+kernel on the H100.</p>
+</li>
+</ol>
+<h2>Part 0: The <code>wgmma</code> instruction</h2>
+<p>To use the <code>wgmma</code> instruction, we first need to understand how it differs from
+the <code>mma</code> instruction we used in <a href="/spring26/labs/lab6">Lab 6</a>.</p>
+<ul>
+<li>
+<p>The first difference is <strong>semantic</strong>. In <code>mma</code>, the operation computes <code>D = A × B + C</code>, where the accumulator <code>C</code> is separate from the output <code>D</code>. In <code>wgmma</code>,
+the operation instead computes <code>D = A × B + D</code>, meaning the output serves as its
+own accumulator. Additionally, <code>wgmma</code> provides optional transformations that
+<code>mma</code> does not: you can transpose <code>A</code> or <code>B</code>, scale either matrix by <code>1</code> or
+<code>-1</code>, and set the <code>D</code> scale to either <code>0</code> (to clear the accumulator) or <code>1</code> (to
+accumulate).</p>
+</li>
+<li>
+<p>The <code>wgmma</code> instruction operates at the level of a <strong>warp group</strong>, a new
+organizational unit consisting of 4 warps, or 128 threads total. <code>mma</code>, on the
+other hand, operates on a single warp of 32 threads.</p>
+</li>
+<li>
+<p>The matrix tile sizes that <code>wgmma</code> can handle are <strong>significantly larger</strong>
+than those supported by <code>mma</code>. For <code>bf16</code>, the data type we’ll focus on in this
+lab, <code>wgmma</code> supports tiles with <code>M = 64</code>, <code>K = 16</code>, and <code>N</code> ranging from 8 to
+256 in steps of 8. For comparison, the <code>mma</code> instruction in Lab 6 used <code>M = 16</code>,
+<code>N = 8</code>, and <code>K = 16</code> (or could also have been set to <code>K = 8</code>). These larger
+tiles enable greater data reuse.</p>
+</li>
+<li>
+<p>There are also differences in where the <strong>input and output matrices can
+reside</strong>. The <code>A</code> matrix can be in either registers or shared memory, while the
+<code>B</code> matrix must be in shared memory. Unlike <code>mma</code>, the <code>B</code> matrix no longer
+needs to be loaded into registers before use. The output matrix <code>D</code> must still
+reside in registers.</p>
+</li>
+<li>
+<p>Finally, unlike <code>mma</code>, the <code>wgmma</code> instruction is <strong>asynchronous</strong>. When you
+issue a <code>wgmma</code> instruction, the warp group can immediately continue executing
+other instructions while the matrix multiply completes in the background.</p>
+</li>
+</ul>
+<p>In fact, most of these differences are visible in the PTX instruction itself.
+Here is a concrete example of the <code>wgmma</code> instruction with size <code>m64n256k16</code>:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><munder><munder><mtext mathvariant="monospace">wgmma</mtext><mo stretchy="true">⏟</mo></munder><mrow><mtext>warp group </mtext><mtext mathvariant="monospace">mma</mtext></mrow></munder><mtext mathvariant="monospace">.</mtext><munder><munder><mtext mathvariant="monospace">mma_async</mtext><mo stretchy="true">⏟</mo></munder><mtext>asynchronous</mtext></munder><mtext mathvariant="monospace">.</mtext><munder><munder><mtext mathvariant="monospace">sync</mtext><mo stretchy="true">⏟</mo></munder><mstyle scriptlevel="1"><mtable rowspacing="0.1em" columnalign="center" columnspacing="1em"><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mtext>synchronize warp group</mtext></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mtext>before issue</mtext></mstyle></mtd></mtr></mtable></mstyle></munder><mtext mathvariant="monospace">.</mtext><munder><munder><mtext mathvariant="monospace">aligned</mtext><mo stretchy="true">⏟</mo></munder><mstyle scriptlevel="1"><mtable rowspacing="0.1em" columnalign="center" columnspacing="1em"><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mtext>all threads in warp group</mtext></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mrow><mtext>execute the same </mtext><mtext mathvariant="monospace">wgmma</mtext><mtext> instruction</mtext></mrow></mstyle></mtd></mtr></mtable></mstyle></munder><mtext mathvariant="monospace">.</mtext></mrow><annotation encoding="application/x-tex"> \underbrace{\texttt{wgmma}}_{\text{warp group \texttt{mma}}} \texttt{.}
+\underbrace{\texttt{mma\_async}}_{\text{asynchronous}} \texttt{.}
+\underbrace{\texttt{sync}}_{\substack{\text{synchronize warp group} \\
+\text{before issue}}} \texttt{.}
+\underbrace{\texttt{aligned}}_{\substack{\text{all threads in warp group} \\
+\text{execute the same \texttt{wgmma} instruction}}} \texttt{.} </annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:2.9452em;vertical-align:-2.3341em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.4306em;"><span style="top:-1.6284em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">warp group </span><span class="mord text mtight"><span class="mord texttt mtight">mma</span></span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.4306em;"><span class="svg-align" style="top:-2.1298em;"><span class="pstrut" style="height:3em;"></span><span class="stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMinYMin slice'><path d='M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z'/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMidYMin slice'><path d='M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z'/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMaxYMin slice'><path d='M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z'/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord texttt">wgmma</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8702em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.5077em;"><span></span></span></span></span></span><span class="mord text"><span class="mord texttt">.</span></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.4306em;"><span style="top:-1.4437em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">asynchronous</span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.4306em;"><span class="svg-align" style="top:-2.1298em;"><span class="pstrut" style="height:3em;"></span><span class="stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMinYMin slice'><path d='M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z'/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMidYMin slice'><path d='M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z'/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMaxYMin slice'><path d='M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z'/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord texttt">mma_async</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8702em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.6924em;"><span></span></span></span></span></span><span class="mord text"><span class="mord texttt">.</span></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.4306em;"><span style="top:-1.1376em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mtable"><span class="col-align-c"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1317em;"><span style="top:-3.1372em;"><span class="pstrut" style="height:2.7em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">synchronize warp group</span></span></span></span><span style="top:-2.2483em;"><span class="pstrut" style="height:2.7em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">before issue</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.6317em;"><span></span></span></span></span></span></span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.4306em;"><span class="svg-align" style="top:-2.1298em;"><span class="pstrut" style="height:3em;"></span><span class="stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMinYMin slice'><path d='M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z'/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMidYMin slice'><path d='M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z'/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMaxYMin slice'><path d='M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z'/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord texttt">sync</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8702em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:2.3045em;"><span></span></span></span></span></span><span class="mord text"><span class="mord texttt">.</span></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span style="top:-1.1228em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mtable"><span class="col-align-c"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1528em;"><span style="top:-3.1583em;"><span class="pstrut" style="height:2.7em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">all threads in warp group</span></span></span></span><span style="top:-2.2695em;"><span class="pstrut" style="height:2.7em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">execute the same </span><span class="mord text mtight"><span class="mord texttt mtight">wgmma</span></span><span class="mord mtight"> instruction</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.6528em;"><span></span></span></span></span></span></span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span class="svg-align" style="top:-2.1298em;"><span class="pstrut" style="height:3em;"></span><span class="stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMinYMin slice'><path d='M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z'/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMidYMin slice'><path d='M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z'/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMaxYMin slice'><path d='M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z'/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord texttt">aligned</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8702em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:2.3341em;"><span></span></span></span></span></span><span class="mord text"><span class="mord texttt">.</span></span></span></span></span></span> <span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><munder><munder><mtext mathvariant="monospace">m64n256k16</mtext><mo stretchy="true">⏟</mo></munder><mtext>bigger tile size</mtext></munder><mtext mathvariant="monospace">.f32.bf16.bf16</mtext></mrow><annotation encoding="application/x-tex">
+\underbrace{\texttt{m64n256k16}}_{\text{bigger tile size}}
+\texttt{.f32.bf16.bf16} </annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:2.0813em;vertical-align:-1.4702em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span style="top:-1.6659em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">bigger tile size</span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span class="svg-align" style="top:-2.352em;"><span class="pstrut" style="height:3em;"></span><span class="stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMinYMin slice'><path d='M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z'/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMidYMin slice'><path d='M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z'/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMaxYMin slice'><path d='M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z'/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord texttt">m64n256k16</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.648em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.4702em;"><span></span></span></span></span></span><span class="mord text"><span class="mord texttt">.f32.bf16.bf16</span></span></span></span></span></span></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><munder><munder><mtext mathvariant="monospace">d</mtext><mo stretchy="true">⏟</mo></munder><mstyle scriptlevel="1"><mtable rowspacing="0.1em" columnalign="center" columnspacing="1em"><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mtext>output (in registers),</mtext></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mtext>also serves as accumulator</mtext></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mrow><mtext>(notice the missing </mtext><mi>C</mi><mtext> param)</mtext></mrow></mstyle></mtd></mtr></mtable></mstyle></munder><mtext mathvariant="monospace">,</mtext><mspace width="1em"/><munder><munder><mrow><mtext mathvariant="monospace">a-desc,</mtext><mtext> </mtext><mtext mathvariant="monospace">b-desc</mtext></mrow><mo stretchy="true">⏟</mo></munder><mstyle scriptlevel="1"><mtable rowspacing="0.1em" columnalign="center" columnspacing="1em"><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mtext>shared memory descriptors,</mtext></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mtext>not registers</mtext></mstyle></mtd></mtr></mtable></mstyle></munder><mtext mathvariant="monospace">,</mtext><mspace width="1em"/><munder><munder><mtext mathvariant="monospace">scale-d</mtext><mo stretchy="true">⏟</mo></munder><mstyle scriptlevel="1"><mtable rowspacing="0.1em" columnalign="center" columnspacing="1em"><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mrow><mtext>scale for </mtext><mi>D</mi></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mtext>(0 or 1)</mtext></mstyle></mtd></mtr></mtable></mstyle></munder><mtext mathvariant="monospace">,</mtext></mrow><annotation encoding="application/x-tex"> \underbrace{\texttt{d}}_{\substack{\text{output (in registers),} \\
+\text{also serves as accumulator} \\ \text{(notice the missing } C \text{
+param)}}} \texttt{,} \quad \underbrace{\texttt{a-desc,
+b-desc}}_{\substack{\text{shared memory descriptors,} \\ \text{not registers}}}
+\texttt{,} \quad \underbrace{\texttt{scale-d}}_{\substack{\text{scale for } D \\
+\text{(0 or 1)}}} \texttt{,} </annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:3.4712em;vertical-align:-2.8601em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span style="top:-1.152em;"><span class="pstrut" style="height:3.1811em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mtable"><span class="col-align-c"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.6872em;"><span style="top:-3.6872em;"><span class="pstrut" style="height:2.75em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">output (in registers),</span></span></span></span><span style="top:-2.7428em;"><span class="pstrut" style="height:2.75em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">also serves as accumulator</span></span></span></span><span style="top:-1.8128em;"><span class="pstrut" style="height:2.75em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">(notice the missing </span></span><span class="mord mathnormal mtight" style="margin-right:0.07153em;">C</span><span class="mord text mtight"><span class="mord mtight"> param)</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.1872em;"><span></span></span></span></span></span></span></span></span></span></span><span style="top:-3.1811em;"><span class="pstrut" style="height:3.1811em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span class="svg-align" style="top:-2.352em;"><span class="pstrut" style="height:3em;"></span><span class="stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMinYMin slice'><path d='M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z'/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMidYMin slice'><path d='M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z'/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMaxYMin slice'><path d='M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z'/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord texttt">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.648em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:2.8601em;"><span></span></span></span></span></span><span class="mord text"><span class="mord texttt">,</span></span><span class="mspace" style="margin-right:1em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span style="top:-1.2252em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mtable"><span class="col-align-c"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1256em;"><span style="top:-3.1312em;"><span class="pstrut" style="height:2.7em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">shared memory descriptors,</span></span></span></span><span style="top:-2.2689em;"><span class="pstrut" style="height:2.7em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">not registers</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.6256em;"><span></span></span></span></span></span></span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span class="svg-align" style="top:-2.2131em;"><span class="pstrut" style="height:3em;"></span><span class="stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMinYMin slice'><path d='M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z'/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMidYMin slice'><path d='M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z'/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMaxYMin slice'><path d='M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z'/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord texttt">a-desc, b-desc</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7869em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:2.2127em;"><span></span></span></span></span></span><span class="mord text"><span class="mord texttt">,</span></span><span class="mspace" style="margin-right:1em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span style="top:-1.3209em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mtable"><span class="col-align-c"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1872em;"><span style="top:-3.2428em;"><span class="pstrut" style="height:2.75em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">scale for </span></span><span class="mord mathnormal mtight" style="margin-right:0.02778em;">D</span></span></span><span style="top:-2.3128em;"><span class="pstrut" style="height:2.75em;"></span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">(0 or 1)</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.6872em;"><span></span></span></span></span></span></span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span class="svg-align" style="top:-2.352em;"><span class="pstrut" style="height:3em;"></span><span class="stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMinYMin slice'><path d='M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z'/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMidYMin slice'><path d='M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z'/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMaxYMin slice'><path d='M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z'/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord texttt">scale-d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.648em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:2.1601em;"><span></span></span></span></span></span><span class="mord text"><span class="mord texttt">,</span></span></span></span></span></span></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><munder><munder><mrow><mtext mathvariant="monospace">imm-scale-a,</mtext><mtext> </mtext><mtext mathvariant="monospace">imm-scale-b,</mtext><mtext> </mtext><mtext mathvariant="monospace">imm-trans-a,</mtext><mtext> </mtext><mtext mathvariant="monospace">imm-trans-b</mtext></mrow><mo stretchy="true">⏟</mo></munder><mtext>configuration parameters for scaling and transposition</mtext></munder></mrow><annotation encoding="application/x-tex"> \underbrace{\texttt{imm-scale-a, imm-scale-b, imm-trans-a,
+imm-trans-b}}_{\text{configuration parameters for scaling and transposition}} </annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:2.2202em;vertical-align:-1.6091em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span style="top:-1.527em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">configuration parameters for scaling and transposition</span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6111em;"><span class="svg-align" style="top:-2.2131em;"><span class="pstrut" style="height:3em;"></span><span class="stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMinYMin slice'><path d='M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z'/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMidYMin slice'><path d='M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z'/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='0.548em' viewBox='0 0 400000 548' preserveAspectRatio='xMaxYMin slice'><path d='M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z'/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord texttt">imm-scale-a, imm-scale-b, imm-trans-a, imm-trans-b</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7869em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.6091em;"><span></span></span></span></span></span></span></span></span></span></p>
+<p>Now that we understand how <code>wgmma</code> differs from <code>mma</code>, let’s try invoking it.
+We’ll start with non-swizzled data layouts before moving on to swizzled layouts.</p>
+<h2>Part 0: Invoking the <code>wgmma</code> instruction</h2>
+<h3>The unswizzled <code>wgmma</code> instruction</h3>
+<h4>Input Matrix Memory Layout</h4>
+<p>Since the <code>A</code> and <code>B</code> matrices reside in shared memory, their memory layout
+(row-major or column-major) becomes important. Unlike with registers, where each
+register is mapped to the same logical index regardless of the original layout,
+shared memory layouts must be explicitly specified through the descriptors so
+the hardware knows how to interpret the matrix data.</p>
+<p>While <code>wgmma</code> supports both row-major and column-major variants for the input
+matrices, for simplicity we’ll use a consistent convention throughout this lab for
+matrices in both global and shared memory:
+<strong><code>A</code> is stored in row-major order, while <code>B</code> is stored in column-major order</strong>. For simplicity,
+we will refer to this as <strong>both <code>A</code> and <code>B</code> being <code>K</code>-major</strong>. In all cases, we also make the <strong>output
+matrix <code>M</code>-major (i.e. stored as <code>NxM</code>)</strong> for consistency with the cuBLAS API.</p>
+
+<p><img src="images/a_row_major.svg" alt="" /></p>
+<p><img src="images/b_row_major.svg" alt="" /></p>
+<h4>Core Matrices</h4>
+<p>The <code>wgmma</code> instruction operates on a <strong>core matrix</strong> (as referred to in the PTX
+documentation) or <strong>atom</strong> (as CUTLASS calls it). A core matrix represents the
+fundamental unit of data that must be contiguous, or tightly packed together in
+memory. For the non-swizzled case, each core matrix is 8 × 16 bytes in size. It is important to note that the values within each core matrix <strong>must be contiguous and K-major</strong>, meaning that you can’t directly copy the whole matrix
+from global memory into shared, since the condition that core matrices must be contiguous will be violated.</p>
+<p>While each core matrix must itself be contiguous (8 × 16 bytes with no gaps),
+there can be gaps between different core matrices. The spacing between
+consecutive core matrices in the <code>K</code> dimension is given by the <strong>leading byte offset</strong>,
+while the spacing between consecutive core matrices in the <code>M</code> or <code>N</code> dimension is given by the <strong>stride byte offset</strong>.</p>
+<p>In practice, we tell <code>wgmma</code> about our shared memory using
+<strong>shared memory descriptors</strong>. The descriptor is set up in a <a href="https://docs.nvidia.com/cuda/pdf/ptx_isa_8.8.pdf#page=650">special
+format</a>. We’ve
+provided a wrapper function <code>construct_smem_desc</code> that encodes descriptors in
+this format. This function takes three parameters in this order:</p>
+<ol>
+<li>
+<p>The <strong>address of the shared memory buffer</strong>.</p>
+</li>
+<li>
+<p>The <strong>leading byte offset</strong>.</p>
+</li>
+<li>
+<p>The <strong>stride byte offset</strong>.</p>
+</li>
+</ol>
+<p>Now, let’s examine what these core matrices look
+like in an example, and how <code>wgmma</code> expects these matrices to be laid out in shared memory.
+We’ll start with the smallest <code>wgmma</code> variant, where M=64, K=16, and N=8 and the matrices are K-major.</p>
+
+<p><img src="images/unswizzled_layout.png" alt="" /></p>
+<p>In this case, let’s calculate the <strong>leading byte offset and the stride byte offset</strong> for the <code>M*K</code> matrix. Moving in the
+<code>K</code> direction, core matrices are adjacent, with spacing at 128 bytes. Hence, the <strong>leading byte offset</strong> is 128 bytes. Moving
+in the <code>M/N</code> direction, core matrices are separated by 2, with spacing at <code>2*128=256</code> bytes. Hence, the <strong>stride byte offset</strong> is 256 bytes. The important thing
+to take away is that <strong>leading byte offset = moving in the <code>K</code> dimension</strong> and <strong>stride byte offset = moving in the <code>M/N</code> dimension</strong>.</p>
+<p><strong>Note:</strong> Like TMA, operations on <code>wgmma</code> happen in the async proxy, and you
+must use an async proxy fence to ensure that the <code>wgmma</code> engine sees the most
+up-to-date values.</p>
+<h4>Output Matrix Register Layout</h4>
+<p>The output matrix <code>D</code>, on the other hand, resides in registers. Like before, the
+values are scattered across registers per thread. In our example, each thread
+holds (64 × 8) / 128 = 4 values. These values are distributed across threads as
+follows (figure from <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/#asynchronous-warpgroup-level-matrix-instructions">PTX documentation</a>):</p>
+<img src="images/wgmma-64N16-D.png" style="width: 100%"/>
+<p>Mathematically, lane <code>x</code> in warp <code>y</code> handles values with <code>M = 16y + (0, 8) * floor(x/4)</code> and <code>N</code> that satisfy <code>(N//2)%4 = x % 4</code>. Intuitively, this means that
+<strong>each warp processes a cluster of 16 values of <code>M</code></strong>. Within each warp, each <strong>set of four threads processes two values of <code>M</code></strong>, reading values in strided 32-byte accesses
+(correspondingly 2 <code>bf16</code> values per thread).</p>
+<h4>Synchronizing Asynchronous <code>wgmma</code> Operations</h4>
+<p>As we mentioned earlier, <code>wgmma</code> is asynchronous. The last piece to put in place
+is the ability to synchronize <code>wgmma</code> operations. <code>wgmma</code> uses a <strong>commit group
+style mechanism</strong>, but there are two significant differences from the commit
+group mechanisms we’ve used before.</p>
+<p>First, there is <strong>ordering within a group</strong>. There is an ordering guarantee
+between different <code>wgmma</code> operations committed in the same group that operate on
+the same output registers. The ordering is enforced in the order the operations
+were issued. You can choose to wait for a sequence of operations by issuing them
+into the same group. Then, as before, you commit and wait on pending groups.</p>
+<p>Second, the commit operations happen at <strong>warp group granularity</strong>. For both
+<code>cp.async</code> and <code>cp.async_bulk</code>, the operations were issued per thread, and as
+such the commit group was committed per thread. With <code>wgmma</code>, the warp group
+issues the commit group instruction together. These instructions must be aligned
+across all threads in the warp group. Similarly, the wait for pending <code>wgmma</code>
+operations must also happen at warp group granularity.</p>
+<p>We provide the following helper functions to synchronize <code>wgmma</code> operations:</p>
+<ol>
+<li>
+<p><strong><code>warpgroup_arrive()</code></strong> performs a memory fence across the warpgroup and ensures that all registers/shared memory
+across the warpgroup has been written into.</p>
+</li>
+<li>
+<p><strong><code>wgmma_commit()</code></strong> commits the current group of <code>wgmma</code> operations.</p>
+</li>
+<li>
+<p><strong><code>wgmma_wait&lt;N&gt;()</code></strong> waits until all but <code>N</code> pending groups of <code>wgmma</code>
+operations have completed.</p>
+</li>
+</ol>
+<h4>Putting It All Together</h4>
+<p>Using these APIs, you now have the tools to implement a simple matrix multiplication kernel using the
+<code>wgmma</code> interface:</p>
+<blockquote>
+<p><strong>Deliverable:</strong> Call a single M=64, N=8, K=16 <code>wgmma</code> in <code>0-m64n8k16-wgmma.cu</code>.
+This should involve only making a single call, but you will need to reorganize
+the data in shared memory to meet the core matrix layout.</p>
+</blockquote>
+<blockquote>
+<p><strong>Prelab Question 1:</strong> How did you layout your shared memory to be compatible
+with the <code>wgmma</code> interface (what were the corresponding leading byte offset and
+stride byte offset)? How did you manage synchronization?</p>
+</blockquote>
+<h3>Invoking the 64-byte swizzled <code>wgmma</code> instruction</h3>
+<p>In the previous section, we worked with the unswizzled <code>wgmma</code> instruction,
+which organizes data at a 8 × 16 byte granularity. The swizzled variants instead process
+different granularities depending on the swizzle mode:</p>
+<ul>
+<li><strong>32-byte swizzled</strong> requires repacking at 8 × 32 bytes (with each 32 bytes
+swizzled)</li>
+<li><strong>64-byte swizzled</strong> requires repacking at 8 × 64 bytes (with each 64 bytes
+swizzled)</li>
+<li><strong>128-byte swizzled</strong> requires repacking at 8 × 128 bytes (with each 128 bytes
+swizzled)</li>
+</ul>
+<p>In this section, we’ll invoke the <strong>64-byte swizzled variant</strong>. Within each 64-byte swizzled core matrix, elements are packed into 128-byte chunks, which are then swizzled. As an
+example, we show the swizzling layout below (figure from <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/#asynchronous-warpgroup-level-matrix-instructions">PTX documentation</a>).
+Please note that each number corresponds to a 128-byte chunk (or correspondingly, 8 packed <code>bf16</code> elements).</p>
+<p><img src="images/64B-swizzle-kmajor.png" alt="" /></p>
+<p>Outside of the size of the core matrix, the main difference between the swizzled case
+and the unswizzled case is how we set up the shared memory descriptor. <strong>For
+swizzled descriptors, the leading byte offset no longer matters and is assumed
+to be 1.</strong> The stride byte offset remains conceptually the same, but now
+represents the offset needed to <strong>move from one 8 × 64 byte core matrix</strong> to the
+next in the <code>M/N</code> dimension.</p>
+<p>Because the 64-byte swizzle mode requires at least 64 bytes in the K dimension,
+we will now use <strong><code>K = 32</code></strong> (32 elements × 2 bytes per bf16 = 64 bytes). With this
+choice, you <strong>will not need to repack the data</strong> as we did in the unswizzled
+case—it’s already in the correct form, since we don’t need multiple core matrices to fill the entire <code>K</code> dimension!
+However, <strong>you will need to swizzle each core matrix</strong>. You are free to use a TMA load if you wish, or you can use your own swizzle function
+from Lab 9.</p>
+<p>Also, since <code>K = 32</code>, you will now require <strong>2 <code>wgmma</code> operations</strong>. The first computes <code>K = 0 to 15</code>, and the second computes <code>K = 16 to 31</code>. To make these two calls, you will
+need to invoke the first <code>wgmma</code> at offset 0, and then invoke the second at
+offset 16 elements (32 bytes). You <strong>do not need to compute these offsets in
+swizzled coordinates</strong>, they should work as byte offsets directly because of the way
+the WGMMA unit is built. You can synchronize these two operations as you wish, either by waiting on each
+individually, or by committing them in the same group and waiting on them
+together.</p>
+<blockquote>
+<p><strong>Deliverable:</strong> Call two <code>M=64, N=8, K=16</code> 64-byte-swizzled <code>wgmma</code> operations
+in <code>1-swizzle-m64n8k32-wgmma.cu</code> to compute a full <code>M=64, N=8, K=32</code> matrix
+multiplication. You will need to swizzle the input data appropriately before
+invoking the <code>wgmma</code> instructions.</p>
+</blockquote>
+<blockquote>
+<p><strong>Prelab Question 2:</strong> How did you layout your shared memory to be compatible
+with the swizzled <code>wgmma</code> interface (what were the corresponding leading byte offset and
+stride byte offset)? How did you manage synchronization?</p>
+</blockquote>
+<h2>Part 1: Matrix Multiplication</h2>
+<p>Now that you have experience with both TMA and <code>wgmma</code>, it’s time to write an
+H100 matrix multiplication kernel!</p>
+<p>In this part, you will implement a matrix multiplication kernel for matrices of
+size M = 8192, N = 8192, K = 8192. The goal is to achieve performance close to
+cuBLAS peak performance, which is around at 798 TFLOPs.</p>
+<blockquote>
+<p><strong>Deliverable:</strong> Implement a high-performance matrix multiplication kernel in
+<code>h100-matmul.cu</code> that computes <code>C = A × B</code> for <code>M = 8192, N = 8192, K = 8192</code>. As before,
+matrix A and B are both <code>K</code>-major, and matrix C is <code>M</code>-major. Your implementation will likely need to leverage both
+TMA for efficient data movement and <code>wgmma</code> for computation.</p>
+</blockquote>
+<blockquote>
+<p><strong>Question 1 for final write-up:</strong> What percentage of peak cuBLAS performance were you able to achieve?
+How did you manage the TMA and <code>wgmma</code> interfaces along with your shared memory and registers? What was
+your model for synchronization? What were the key tradeoffs that you encountered in designing your kernel?
+Any interesting bugs to report?</p>
+</blockquote>
+<p>This part is open-ended, and you should use your experience from Labs 4, 5, and
+6 to guide your exploration.</p>
+<p>However, you may want to consider using larger <code>wgmma</code> operations,
+as the <code>bf16</code> tensor cores on the H100 support up to <code>N = 256</code> in steps of 8, keeping
+<code>M = 64, K = 16</code> to be constant. Using larger <code>N</code> dimensions allows each warp group to compute more output values
+per instruction, which can significantly improve performance by <strong>increasing data reuse</strong> and <strong>reducing instruction
+overhead</strong>. If you are interested in exploring this direction, we implement a few sample <code>wgmma</code> sizes in
+<code>wgmma-interface.cuh</code> and also provide a skeleton in <code>optional-wgmma-setup.cu</code> for testing additional <code>wgmma</code> problem sizes.</p>
+<p>Overall, we also expect the performance cutoff for this part of the lab to be <strong>no lower than 80% of cuBLAS peak performance</strong>. Stay tuned for <strong>more suggestions and exact cutoffs in the coming days!</strong></p>
+
+</main>
+</body></html>

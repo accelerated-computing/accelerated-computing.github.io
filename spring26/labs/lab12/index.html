@@ -38,7 +38,7 @@
 </nav></header>
 
 <main>
-<h1>Section 1: Getting Started with MPI</h1>
+<h1>Lab 12: Introduction to MPI</h1>
 
 <h2>Prologue: Logistics</h2>
 <h3>Due Dates</h3>
@@ -59,6 +59,80 @@
 repository</a>:</p>
 <pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">git</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> clone git@github.com:accelerated-computing-class/lab12.git</span>
 </span></pre>
+
+
+<h2>Section 0 (Prelab): Memory Hierarchies and Performance of Serial Applications</h2>
+
+<p>In this exercise you will explore how memory hierarchies affect performance for serial applications.</p>
+
+<ul>
+  <li>arithmetic intensity: how to compute; divides; memory access</li>
+  <li>at least 2 different system architectures. Compare and contrast.</li>
+</ul>
+
+<p>All of these aspects of serial applications are transferable to parallel applications, as we shall see later in the course.</p>
+
+<h2>Warm-up</h2>
+
+<p>Review the section in <a href="../assets/EijkhoutIntroToHPC2020.pdf">HPSC</a> on computing arithmetic intensity for given compute kernels.<br>
+Then, as a group, compute the arithmetic intensities of the following kernels in units of FLOPs/byte, assuming 8 bytes per float.</p>
+
+<pre><code>  Y[j] += Y[j] + A[j][i] * B[i]
+</code></pre>
+
+<pre><code>  s += A[i] * A[i]
+</code></pre>
+
+<pre><code>  s += A[i] * B[i]
+</code></pre>
+
+<pre><code>  Y[i] = A[i] + C*B[i]
+</code></pre>
+
+<p>Included a table in your project report listing the arithmetic intensities for these kernels.</p>
+
+<h2>Part 1: Matrix-matrix Multiplication</h2>
+
+<p>In this first part of the project, you will test the performance of the basic matrix-matrix multiplication operation as a function of matrix size on multiple compute platforms. Complete the following using at least two different compute architectures (e.g., your laptop and HPCC, or two different node architectures on HPCC).</p>
+
+<ol>
+  <li>With your group, write a program that multiplies two matrices together (see: <a href="http://mathworld.wolfram.com/MatrixMultiplication.html">Matrix Multiplication</a>). Use GitHub to manage the code development and version history.</li>
+
+  <li>For a given matrix size <em>N</em>, what is the total number of floating point operations performed by this operator?</li>
+
+  <li>Using the supplied C routine <code>get_walltime.c</code>, or any other accurate means of measuring time, compute the performance in Mflop/s of the matrix-matrix multiply for <em>N</em>=100. Be sure to perform enough repeat calculations of the timing to overcome any statistical noise in the measurement.</li>
+
+  <li>For the system you are running on, determine the clock speed of the processor and the cache size/layout. Use this information to estimate the theoretical peak performance of the system, assuming that the processor is capable of one flop per clock cycle (generally NOT true on modern architectures). How does the performance you measured in (3) compare to the theoretical peak performance of your system?</li>
+
+  <li>Now repeat the performance measurement for a range of matrix size <code>N</code> from 1 to 10,000,000. Make a plot of the resulting measured Gflop/s vs. <code>N</code>. On this plot place a horizontal line representing the theoretical peak performance based upon your system's clock speed.</li>
+
+  <li>How does the measured performance for multiple <em>N</em>'s compare to peak? Are there any "features" in your plot? Explain them in the context of the hardware architecture of your system. Include in your write-up a description of your system's architecture (processor, cache, etc.).</li>
+</ol>
+
+<p>To your project git repo, commit your code for performing the matrix-matrix multiply performance measurements, the plots of your results, and a brief write-up (in plain text or markdown) addressing the above questions and discussing your results. Pay particular attention to the comparison between different architectures and give explanations for them.</p>
+
+<h2>Part 2: The Roofline Model</h2>
+
+<p>In this part, you will explore the roofline model for analyzing the interplay between arithmetic intensity and memory bandwidth for architectures with complex memory hierarchies. Complete the following exercises on the <em>SAME</em> compute architectures that you used in Part 1 above.</p>
+
+<ol>
+  <li>Reference the materials on the Roofline Performance model at <a href="https://crd.lbl.gov/divisions/amcr/computer-science-amcr/par/research/roofline/">Roofline Model</a>. In particular, look through <a href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2008/EECS-2008-134.pdf">"Roofline: An Insightful Visual Performance Model for Floating-Point Programs and Multicore Architectures"</a> and the slides at <a href="https://crd.lbl.gov/assets/pubs_presos/parlab08-roofline-talk.pdf">PARLAB Talk</a>.</li>
+
+  <li>Clone the CS Roofline Toolkit: <code>git clone https://bitbucket.org/berkeleylab/cs-roofline-toolkit.git</code>. Modify one of the config files in <code>Empirical_Roofline_Tool-1.1.0/Config</code> as necessary for the machine you are using.</li>
+
+  <li>Run the ERT in serial mode on your local machine. Report the peak performances and bandwidths (for all caches levels as well as DRAM). Where is the "ridge point" of the roofline for the various cases?</li>
+
+  <li>Consider the four FP kernels in "Roofline: An Insightful Visual Performance Model for Floating-Point Programs and Multicore Architectures" (see their Table 2). Assuming the high end of operational (i.e., "arithmetic") intensity, how would these kernels perform on the platforms you are testing? What optimization strategy would you recommend to increase performance of these kernels?</li>
+
+  <li>Address the same questions in (4) for the four kernels given in the Warm-up above.</li>
+
+  <li>Compare your results for the roofline model to what you obtained for the matrix-matrix multiplication operation from Part 1. How are the rooflines of memory bandwidth related to the features in the algorithmic performance as a function of matrix size?</li>
+</ol>
+
+<p>To your project write-up, add your plots of the roofline model for the systems you tested, and responses addressing the above questions.</p>
+
+
+<h2>Section 1: Getting Started with MPI</h2>
 
 <h3>Goals for This Lab</h3>
 
@@ -164,7 +238,7 @@ module load intel/2021a</code></pre>
   </ul>
 
 
-<h1>Section 2: MPI Ping-Pong and Ring Shift</h1>
+<h2>Section 2: MPI Ping-Pong and Ring Shift</h2>
 
 <h2>Background</h2>
 

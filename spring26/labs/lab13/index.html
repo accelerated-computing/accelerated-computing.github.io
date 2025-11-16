@@ -66,18 +66,13 @@ repository</a>:</p>
 
 <h3>Goals for This Lab</h3>
 
-<p>
-In this assignment, you will implement and optimize the key components of a transformer-based deep neural network that synthesizes Shakespeare text. 
-While the DNN you will work with is a fairly small model, the basic components are the same as those in large-language models (LLMs) such as ChatGPT.
-Specifically, you will implement the attention layer in C++, focusing on optimizations that improve arithmetic intensity, reduce memory footprint, 
-and leverage multi-core and SIMD parallelism on the CPU. Your implementation will be used inside a complete 
-<a href="https://github.com/karpathy/nanoGPT">NanoGPT</a> model, which you will run to generate Shakespeare-like text.
-</p>
+<p>In this assignment, you will implement and optimize the key components of a transformer-based deep neural network that synthesizes Shakespeare text. While the DNN you will work with is a fairly small model, the basic components of the model are the same as those featured in large-language models (LLMs) that form the basis of technologies like ChatGPT today. Specifically, you will implement the attention layer of this model in C++, focusing on optimizations that improve arithmetic intensity, reduce memory footprint, and utilize multi-core and potentially SIMD parallelism on the CPU. Your implementation will then be used as part of a complete <a href="https://github.com/karpathy/nanoGPT">NanoGPT</a> model that you can run to produce novel Shakespeare-like text.</p>
 
-<p>This assignment will:</p>
+<p>Overall, this assignment will:</p>
+
 <ul>
-  <li>Give you experience with low-level DNN layer implementation—i.e., the “guts” of vendor libraries like NVIDIA CuDNN or Intel OneAPI.</li>
-  <li>Show the value of locality-preserving optimizations such as loop blocking and loop fusion.</li>
+<li>Give you experience with the low-level details of implementing DNN layers. In other words, the "guts" of vendor libraries like NVIDIA's CuDNN or Intel's One API.</li>
+<li>Show the value of key locality-perserving optimizations like loop blocking and loop fusion.</li>
 </ul>
 
 <h2>Environment Setup</h2>
@@ -122,104 +117,318 @@ As I be come of repeal of a w
 
 <h3>My Compilation Hangs</h3>
 
-<p>Some students have experienced issues when their compilation randomly starts hanging even though it was working before. When Python JIT compiles your code, it uses locks so multiple threads can compile it as once for efficiency. If you ever compile your code and it hangs, it means that for some reason Python thinks that the lock to your file is held. In order to fix this you can run:</p>
+<p>Some students have experienced issues when their compilation randomly starts hanging even though it was working before. When Python JIT compiles your code, it uses locks so multiple threads can compile it as once for efficiency. If you ever compiler your code and it hangs it means that for some reason Python thinks that the lock to your file is held. In order to fix this you can run:</p>
 
 <pre><code>rm ~/.cache/torch_extensions/py310_cpu/custom_module/lock
 </code></pre>
 
 <h2>An Attention Module</h2>
 
-<p>The NanoGPT module you are executing in this assignment is a sequence-to-sequence model. The input is a sequence of words, such as the phrase <em>"The course of true love never did run smooth"</em>. And the output of the model is a new sequence of words that is likely to follow the input, as determined by a model that has been trained on a large corpus of Shakespeare text. For example, given the prefix above, the output of the model might be <em>"whispered cs149 students whilst coding on assignments"</em>.</p>
+<p>The NanoGPT module you are executing in this assignment is a sequence-to-sequence model. The input is a sequence of words, such as the phrase <em>"The course of true love never did run smooth"</em>.  And the output of the model is a new sequence of words that is likely to follow the input, as determined by a model that have been trained on a large corpus of Shakespeare text. For example, given the prefix above, the output of the model might be <em>"whispered cs149 students whilst coding on assignments"</em>.</p>
 
-<p>The NanoGPT model uses a popular DNN module called a <em>transformer</em>, and a key component of a transformer module is a block called the <em>attention mechanism</em>. In this assignment your job is to implement the attention mechanism. You will begin with a simple sequential implementation of attention, and then over the course of the assignment we'll take you through the process of adding optimizations like loop blocking, loop fusion, and basic parallelization.</p>
+<p>The NanoGPT model uses a popular DNN module called a <em>transformer</em>, and a key component of a transformer module is a block called the <em>attention mechanism</em>. In this assignment your job is to implement the attention mechanism.  You will begin with a simple sequential implementation of attention, and then over the course of the assignment we'll take you through the process of adding optimizations like loop blocking, loop fusion, and basic parallelization.</p>
 
 <p>In this section, we will describe the math of the attention mechanism (that you are supposed to compute). You may refer to <a href="https://gfxcourses.stanford.edu/cs149/fall23/lecture/dnneval/slide_52">Slide 52 of Lecture 10</a> for a visual representation to follow along with. To students that seek more intuition for <em>why</em> an attention mechanism is what it is, we refer you to the many online tutorials about this popular DNN architecture such as:</p>
 
 <ul>
-  <li><a href="https://ai.stackexchange.com/questions/21389/what-is-the-intuition-behind-the-attention-mechanism">What is the intuition behind the attention mechanism?</a></li>
-  <li><a href="https://builtin.com/artificial-intelligence/transformer-neural-network">Transformer Neural Networks: A Step-by-Step Breakdown</a></li>
-  <li><a href="https://towardsdatascience.com/transformers-141e32e69591">How Transformers Work</a></li>
+<li><a href="https://ai.stackexchange.com/questions/21389/what-is-the-intuition-behind-the-attention-mechanism">What is the intuition behind the attention mechanism?</a></li>
+<li><a href="https://builtin.com/artificial-intelligence/transformer-neural-network">Transformer Neural Networks: A Step-by-Step Breakdown</a></li>
+<li><a href="https://towardsdatascience.com/transformers-141e32e69591">How Transformers Work</a></li>
 </ul>
 
-<p>The attention mechanism takes as input three matrices <code>Q</code>, <code>K</code>, and <code>V</code>, referred to as "query", "key", and "value" vectors. Each of these matrices are <code>N × d</code> in size. <code>N</code> is the number of tokens (words) in the input sequence, so each row in these matrices is a length-<code>d</code> vector containing an embedding (a neural code) for one of the input words. In other words, <code>Q</code>, <code>K</code>, and <code>V</code> all contain different <code>d</code>-dimensional embeddings of the input tokens.</p>
+<p>The attention mechanism takes as input three matrices <code>Q</code>, <code>K</code>, and <code>V</code>, referred to as "query", "key", and "value" vectors.  Each of these matrices are <code>Nxd</code> in size. <code>N</code> is the number of tokens (words) in the input sequence, so each row in these matrices is a length-<code>d</code> vector containing an embedding (a neural code) for one of the input words.  In other words <code>Q</code>, <code>K</code>, and <code>V</code> all contain different <code>d</code>-dimensional embeddings of the input tokens.</p>
 
 <p><strong>Important Caveat:</strong> To increase the efficiency and expressive power of the model, this attention module is typically run multiple times in parallel, due to there being multiple attention heads and multiple inputs in a batch. Understanding exactly why this is the case is not important, but just know that, in your implementation, these matrices will appear as <strong>4D</strong> tensors, where you will just be concerned with two of the four dimensions (corresponding to the <code>N × d</code> size.)</p>
 
-<p>The first step of an attention module is to compute all pairs of interactions between the words. This is done by multiplying the query matrix <code>Q</code> against the key matrix <code>K</code> to compute:</p>
+<p>The first step of an attention module is to compute all pairs of interactions between the words.  This is done by multiplying the query matrix <span class="math">\(Q\)</span> against the key matrix <span class="math">\(K\)</span> to compute:</p>
 
-<p><strong>$$S = QK^T.$$</strong></p>
+<p><span class="math">\[
+S = QK^T.
+\]</span></p>
 
-<p>The next computation is a <a href="https://machinelearningmastery.com/softmax-activation-function-with-python/">softmax operation</a> performed per-row of <code>S</code>. The softmax produces normalized probabilities per row.</p>
+<p>The next computation is a <a href="https://machinelearningmastery.com/softmax-activation-function-with-python/">softmax operation</a> performed per-row of <span class="math">\(S\)</span>.  The softmax produces normalized probabilities per row. </p>
 
-<p>For each row of the matrix, the softmax operation performs the following computation. Note that we give you the math for computing a softmax on a 1D vector <code>X</code>. You'll need to perform this math for each row of the matrix <code>S</code> above.</p>
+<p>For each row of the matrix, the softmax operation performs the following computation. Note that we give you the math for computing a softmax on a 1D vector <span class="math">\(X\)</span>.  You'll need to perform this math for each row of the matrix <span class="math">\(S\)</span> above.</p>
 
-<p><strong>$$\text{softmax}(x) = \frac{\mathbf{f}(x)}{l(x)}$$</strong></p>
+<p><span class="math">\[
+\text{softmax}(x) = \frac{\mathbf f(x)}{l(x)}
+\]</span></p>
 
 <p>where</p>
 
-<p><strong>$$\mathbf f(x) = 
-\begin{bmatrix}
-e^{x_1} & e^{x_2} & \cdots & e^{x_N}
-\end{bmatrix}
-\qquad \text{and} \qquad
-l(x) = \sum_{i=1}^N f(x)_i.$$</strong></p>
+<p><span class="math">\[
+\mathbf f(x) = \begin{bmatrix}e^{x_1} & e^{x_2} &\cdots & e^{x_N} \end{bmatrix}\qquad \text{and} \qquad l(x) = \sum_{i=1}^N f(x)_i.
+\]</span></p>
 
 <p>Note that the math above differs from the equation you saw in lecture in that <code>max(x)</code> is not subtracted from the numerators. The version of the math in lecture is what's used in practice for numerical stability, but in this assignment you can just use the math above. (It's a lot easier to implement FlashAttention later in the assignment if you use the math above.) For the ambitious, if you wish to use the version from lecture, feel free... you may see differences in "correctness checking".)</p>
 
-<p>This yields a matrix of attention weights <code>P</code>, where:</p>
+<p>This yields a matrix of attention weights <span class="math">\(P\)</span>, where</p>
 
-<p><strong>$$P = \texttt{softmax}(\texttt{each row of } S).$$</strong></p>
+<p><span class="math">\[
+P = \texttt{softmax}(\texttt{each row of }S).
+\]</span></p>
 
-<p>Finally, the attention weights are used to aggregate a set of learned <strong>value</strong> vectors, which are provided as a matrix <code>V</code> of shape <code>N × d</code>, to produce a final output <code>O</code>:</p>
+<p>Finally, the attention weights are used to aggregate a set of learned <strong>value</strong> vectors, which are provided as a matrix <span class="math">\(V\)</span> of shape <code>N × d</code>, to produce a final output <span class="math">\(O\)</span>:</p>
 
-<p><strong>$$O = PV.$$</strong></p>
+<p><span class="math">\[
+O = PV.
+\]</span></p>
 
-<p>In summary, the attention layer consists of an expensive matrix multiply, followed by a softmax layer, followed by one more matrix multiply. These three components will be the bulk of your implementation — read on for the details!</p>
+<p>In summary, the attention layer consists of an expensive matrix multiply, followed by a softmax layer, followed by one more matrix multiply. These three components will be the bulk of your implementation -- read on for the details!</p>
 
 <h2>Warm-Up: Accessing Tensors (3 Points)</h2>
-<p>
-Tensors are a data abstraction used in Pytorch. Although the name seems a bit intimidating, they are nothing more than multi-dimensional arrays. By abstracting these multi-dimensional arrays into a tensor datatype, the average PyTorch programmer no longer has to worry about how internals such as accessing a value or matrix multiplication work. Furthermore, Pytorch's tensors allow for easy GPU portability so that they can be run on specialized hardware, like Tensor cores. However, for this assignment we will be using CPU only, and instead of working with tensor datatypes we want you to work with a datatype you are all familiar with: C++ vectors.
-</p>
 
-<p>
-A central key to understanding tensors is to know how to access them. This is why for the warm-up we want you to write accessors for a 4D tensor. For Parts 1-4, we have taken the liberty of providing you with a function called <code>formatTensor</code> that transforms Tensors into C++ vectors. This provides you with a contiguous memory layout for a tensor's values, similar to how Pytorch stores tensor data. For Parts 1-4, we have also taken the liberty of transforming the output vector back into a tensor for you.
-</p>
+<p>Tensors are a data abstraction used in Pytorch. Although the name seems a bit intimidating, they are nothing more than multi-dimensional arrays. By abstracting these multi-dimensional arrays into a tensor datatype, the average PyTorch programmer no longer has to worry about how internals such as accessing a value or matrix multiplication work. Furthermore, Pytorch's tensors allow for easy GPU portability so that they can be run on specialized hardware, like Tensor cores. However, for this assignment we will be using CPU only, and instead of working with tensor datatypes we want you to work with a datatype you are all familiar with: C++ vectors.</p>
+
+<p>A central key to understanding tensors is to know how to access them. This is why for the warm-up we want you to write accessors for a 4D tensor. For Parts 1-4, we have taken the liberty of providing you with a function called  <code>formatTensor</code> that transforms Tensors into C++ vectors. This provides you with a contiguous memory layout for a tensor's values, similar to how Pytorch stores tensor data. For Parts 1-4, we have also taken the liberty of transforming the output vector back into a tensor for you.</p>
 
 <h3>Step 1: Understand a 2D Accessor</h3>
-<p>
-You should be relatively familiar with how to flatten a 2D array after Assignment 3. Your first job will be to understand how we can access an element of a multidimensional array, which is really just stored as a flattened 1D buffer in memory. We have given you example accessors for reading and writing to a 2D array. You will find them at the top of <code>module.cpp</code> under the names <code>twoDimRead</code> and <code>twoDimWrite</code>. The given 2D accessors will show you how we can access an arbitrary element <code>(i, j)</code> within this flattened array. <strong>Note that the formula is as follows: For any given element (i, j) within an array, you may access it using [i * number_of_columns + j].</strong>
-</p>
+
+<p>You should be relatively familiar with how to flatten a 2D array after Assignment 3. Your first job will be to understand how we can access an element of a multidimensional array, which is really just stored as a flattened 1D buffer in memory. We have given you example accessors for reading and writing to a 2D array. You will find them at the top of <code>module.cpp</code> under the names <code>twoDimRead</code> and <code>twoDimWrite.</code> The given 2D accessors will show you how we can access an arbitrary element <code>(i, j)</code> within this flattened array. <strong>Note that the formula is as follows: For any given element (i, j) within an array, you may access it using [i * number_of_columns + j].</strong></p>
 
 <h3>Step 2: Implement a 4D Accessor</h3>
-<p>
-In our LLM model, our arrays are 4D, so we will actually need a 4D accessor to access its elements! Now, extend the concepts behind accessing a 2D tensor so that you can access a 4D tensor. Your job for Step 1 is to implement the functions <code>fourDimRead</code> and <code>fourDimWrite</code> in the file <code>module.cpp</code>.
-</p>
+
+<p>In our LLM model, our arrays are 4D, so we will actually need a 4D accessor to access its elements! Now, extend the concepts behind accessing a 2D tensor so that you can access a 4D tensor. Your job for Step 1 is to implement the functions <code>fourDimRead</code> and <code>fourDimWrite</code> in the file <code>module.cpp</code>.</p>
 
 <h3>Testing:</h3>
+
 <p>Run the following command to test your 4D accessor:</p>
 
 <pre><code>python3 gpt149.py 4Daccess
 </code></pre>
 
-<p>
-When running the test, if you have implemented your accessors correctly, the expected and result values should be the same, resulting in an output like the one below.
-</p>
+<p>When running the test, if you have implemented your accessors correctly, the expected and result values should be the same, resulting in an output like the one below.</p>
 
 <pre><code>Expected: 0.0006
 Result: 0.0006
 </code></pre>
 
 <h3>What to submit</h3>
+
 <ul>
-  <li>Implement <code>fourDimRead</code> and <code>fourDimWrite</code> in the file <code>module.cpp</code>.</li>
-  <li>
-    Next, answer the following question in your writeup:
-    <ul>
-      <li>Briefly describe how a 4D tensor/array is laid out in memory. Why do you think this convention was chosen and how does it leverage hardware?</li>
-    </ul>
-  </li>
+<li>Implement <code>fourDimRead</code> and <code>fourDimWrite</code> in the file <code>module.cpp</code>.</li>
+<li>Next, answer the following question in your writeup:
+<ul>
+<li>Briefly describe how a 4D tensor/array is laid out in memory. Why do you think this convention was chosen and how does it leverage hardware?</li>
+</ul></li>
 </ul>
 
+<h2>Part 1: A Simple (But Not So Efficient) Implementation of Attention (10 Points)</h2>
+
+<p>Now that you have your accessors, it's time to start working on your custom attention layer. As the first step in this assignment, you will be implementing a serial attention layer in C++ with no optimizations. In <code>myNaiveAttention</code>, we have provided you with two examples. The first demonstrates how to fill a 4D tensor with 0's and the second demonstrates how to fill a 2D tensor with 0's. Extend these concepts such that you are able to implement attention. You should:</p>
+
+<pre><code>1) For each Batch:
+2) For each Head:
+    a) Loop through Q and K and multiply Q with K^t, storing the result in QK^t. 
+    QK^t is preallocated for you, and passed as an arg to myNaiveAttention. 
+    (You should not have to allocate any pytorch tensors for any part of this assignment)
+    
+    Note that after indexing the batch and head, you will be left with 2D matrices 
+    of shape (N, d) for Q and K. Also note that the dimensions of K are (N, d) and 
+    the dimensions of the K^t that you want are (d, N). Rather than transposing K^t, how
+    can you multiply Q and K in such an order that the result is QK^t? Think about how
+    you can reorder your `for` loops from traditional matrix multiplication.
+
+    b) After you have achieved QK^t -- which should have shape (N, N) -- you should loop 
+    through each row. For each row, you should get the exponential of each row element,
+    which you can get using the C++ inbuilt `exp` function. Now, divide each of these 
+    resulting exponentials by the sum of all exponentials in its row and then store it back into QK^t. 
+
+    c) Finally, you should matrix multiply QK^t with V and store the result into O. 
+    Notice, much like Q and K, after you index the batch and head V and O will
+    be of shape (N, d). Therefore, after you multiply QK^t (N, N) with V (N, d),
+    you can simply store the resulting shape (N, d) back into O.
+</code></pre>
+
+<h3>Testing</h3>
+
+<p>Run the following test to check your program's correctness:</p>
+
+<pre><code>python3 gpt149.py part1
+</code></pre>
+
+<p>While running the test, we show results of the pytorch profiler - this information is presented in a table which will show you detailed statistics on all function calls called in the test. The table that is dumped will look like the following:</p>
+
+<pre><code>-----------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                     Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg       CPU Mem  Self CPU Mem    # of Calls  
+-----------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+              aten::empty         0.01%      23.000us         0.01%      23.000us       3.286us       5.00 Mb       5.00 Mb             7  
+              aten::zeros         0.14%     321.000us         0.18%     408.000us     102.000us       4.50 Mb           4 b             4  
+STUDENT - NAIVE ATTENTION        99.56%     229.600ms        99.97%     230.538ms     230.538ms       4.50 Mb      -1.00 Mb             1  
+              aten::clone         0.02%      37.000us         0.10%     231.000us     115.500us       1.00 Mb           0 b             2  
+            aten::flatten         0.02%      48.000us         0.07%     153.000us      30.600us     512.00 Kb           0 b             5  
+         aten::empty_like         0.00%       3.000us         0.00%       8.000us       8.000us     512.00 Kb           0 b             1  
+      aten::empty_strided         0.01%      16.000us         0.01%      16.000us      16.000us     512.00 Kb     512.00 Kb             1  
+          model_inference         0.02%      38.000us        99.98%     230.578ms     230.578ms     512.00 Kb      -4.00 Mb             1  
+              aten::zero_         0.02%      42.000us         0.15%     354.000us      88.500us           0 b           0 b             4  
+              aten::fill_         0.14%     312.000us         0.14%     312.000us     156.000us           0 b           0 b             2  
+-----------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+</code></pre>
+
+<p>After the table is dumped, we also display two relevant statistics, cpu time (in milliseconds) and mem usage (in bytes). If you implemented your function correctly you should see those two values output like so:</p>
+
+<pre><code>REFERENCE - NAIVE ATTENTION statistics
+cpu time:  230.724ms
+mem usage:  4718588 bytes
+
+STUDENT - NAIVE ATTENTION statistics
+cpu time:  232.561ms
+mem usage:  4718588 bytes
+</code></pre>
+
+<p>If your attention is not producing the correct output, you will see the following message:</p>
+
+<pre><code>YOUR ATTENTION PRODUCED INCORRECT RESULTS
+</code></pre>
+
+<p>Note that you do not have to exactly match the reference <code>cpu time,</code> as long as you still produce a correct result. You should still be relatively close to the cpu time. We will provide you with a buffer of 15ms with respect to the reference cpu time. So, if you are &lt;= 15ms behind the reference solution then that is fine and you will still get full credit. You are of course encouraged to beat the reference cpu time, and faster speeds will not be penalized.</p>
+
+<p>Note that the memory usage value will not change even if you allocate more intermediate variables then we give you. This memory usage is only profiled from the variables passed in as arguments. For each Parts (1-4), we provide you with the minimum amount of variables to produce the correct result. <strong>You can also assume that all the temporary intermediate tensors that we have passed in are initialized to contain zeros.</strong> We do this because we want you to see how the memory usage goes down as operations get fused and there will be writeup questions based on these memory values. Adding any more high memory data structures will most likely only hurt your performance, but you are welcome to try adding additional variables in your <code>module.cpp</code> file and you will not be penalized.</p>
+
+<p>You should be sure to test that your function works for different values of N, as this is how we will be grading you on correctness. We have provided a command line argument that works as so:</p>
+
+<pre><code>python3 gpt149.py part1 -N &lt;val&gt;
+</code></pre>
+
+<p>If you have implemented your attention layer, you can also see the DNN use your attention layer to generate text, optionally changing the model to <code>shakes256</code>, <code>shakes1024</code>, or <code>shakes2048</code> if you wish to output more text:</p>
+
+<pre><code>python3 gpt149.py part1 --inference -m shakes128
+</code></pre>
+
+<p>Note that you will not be autograded on inference, and this is purely for fun. Please also note that the models <code>shakes1024</code> and <code>shakes2048</code> will not work with the softmax we describe in this writeup due to overflow errors. If you wish to have them work, you must implement the "safe" softmax described in class. This is completely optional as we will always make sure to give you nice values when grading. Parts 1-3 all follow the same grading procedure listed here in this section.</p>
+
+<h3>What to submit</h3>
+
+<ul>
+<li>Implement <code>myNaiveAttention</code> in <code>module.cpp</code>.</li>
+</ul>
+
+<h2>Part 2: Blocked Matrix Multiply and Unfused Softmax (20 Points)</h2>
+
+<p>Now that we have our baseline matrix multiply, let's see how we can optimize it. Currently, our matrix multiply behaves as follows:</p>
+
+<p align="center">
+  <img src="https://github.com/stanford-cs149/cs149gpt/blob/main/assets/current_matmul.png" width="40%" height="40%">
+</p>
+
+<p>Notice how poor the cache behavior of this operation is. For each element of C, we load in multiple cache lines from both A and B. However, something to keep in mind is that the size of these matrices are much bigger than our cache size. Therefore, by the time we want to process our next element of C, we will be reloading cache lines that have been evicted. But what if we reused these cache lines? The main reason that our code is inefficient is because we are processing a single element of C at a time, but what if we processed BLOCK elements at a time? In particular, what if we processed a cache line size of elements?</p>
+
+<p>Your job is to further extend your matrix multiply so that it employs blocking as discussed in <a href="https://gfxcourses.stanford.edu/cs149/fall23/lecture/perfopt2/slide_43">lecture</a>. You will decompose the large matrices into smaller cache-sized submatrices. Your multiply will then process the smaller submatrices before evicting them from the cache. The behavior should look like the following:</p>
+
+<p align="center">
+  <img src="https://github.com/stanford-cs149/cs149gpt/blob/main/assets/blocked_matmul.png" width="40%" height="40%">
+</p>
+
+<p>As a further example, let's say I have 3 NxN matrices and a cache line size of L. I would then break my 3 NxN matrices into (N/L)x(N/L) submatrices. How does this improve my cache utilization?</p>
+
+<p>However, something to keep in mind is that we do not have perfectly square matrices. Our <span class="math">\(Q\)</span> and <span class="math">\(K^{T}\)</span> matrices are Nxd and dxN respectively. Keep this in mind as you try to break your matrices into blocks. Furthermore, your tile size will not always divide up N evenly, meaning you will have some "remainder" tiles that are not full of data. In this case, you do not want to iterate over the entire "remainder" tile, but only iterate over a "subtile", which has dimension <code>min(tile_size, N-tileIndex*tileSize)</code>.</p>
+
+<p>Also, keep in mind that as before, the temporary memory you will need is already preallocated for you and passed to the function you need to implement (<code>myUnfusedAttentionBlocked</code>) - you shouldn't have to allocate anything yourself although you will not be penalized for doing so.</p>
+
+<p><strong>Note that you have two opportunities for blocked matrix multiplication here: QK^t and PV. You should utilize blocked matrix multiply on both in order to achieve the reference speedup.</strong></p>
+
+<h3>Testing:</h3>
+
+<p>Run the following test to check your program's correctness:</p>
+
+<pre><code>python3 gpt149.py part2
+</code></pre>
+
+<p>A correct implementation should yield the following output:</p>
+
+<pre><code>REFERENCE - BLOCKED MATMUL + UNFUSED SOFTMAX statistics
+cpu time:  156.271ms
+mem usage:  4718588 bytes
+
+STUDENT - BLOCKED MATMUL + UNFUSED SOFTMAX statistics
+cpu time:  160.891ms
+mem usage:  4718588 bytes
+</code></pre>
+
+<p>An incorrect implementation will have the output:</p>
+
+<pre><code>YOUR ATTENTION PRODUCED INCORRECT RESULTS
+</code></pre>
+
+<p>Just as in Part 1, we will autograde the correctness of your function's output and its CPU time. You have the same buffer of &lt;=15ms of the reference solution. If your program is faster you will not be penalized.</p>
+
+<p>You should be sure to test that your function works for different values of N, as this is how we will be grading you on correctness. We have provided a command line argument that works as so:</p>
+
+<pre><code>python3 gpt149.py part2 -N &lt;val&gt;
+</code></pre>
+
+<p>You can see the DNN use your attention layer to generate text, optionally changing the model to <code>shakes256</code>, <code>shakes1024</code>, or <code>shakes2048</code> if you wish to output more text:</p>
+
+<pre><code>python3 gpt149.py part2 --inference -m shakes128
+</code></pre>
+
+<p>Note that you will not be autograded on inference, and this is purely for fun. Please also note that the models <code>shakes1024</code> and <code>shakes2048</code> will not work with the softmax we describe in this writeup due to overflow errors. If you wish to have them work, you must implement the "safe" softmax described in class. This is completely optional as we will always make sure to give you nice values when grading.</p>
+
+<h3>What to submit</h3>
+
+<ul>
+<li>Implement <code>myUnfusedAttentionBlocked</code> in <code>module.cpp</code>.</li>
+<li>Then, answer the following questions in your writeup:
+<ul>
+<li>Share us some data about what tile sizes you tried when N=1024, and what the performance times were for each.  What was the optimal tile size for your matrix multiplications? Explain why you think this tile size worked best for your implementation. There really isn't a wrong answer here, we just want to see that you experimented and tried to form conclusions.</li>
+<li>For a matrix multiply of <span class="math">\(Q\)</span> (Nxd) and <span class="math">\(K^{T}\)</span> (dxN), what is the ratio of DRAM accesses in Part 2 versus DRAM acceses in Part 1? (assume 4 byte float primitives, 64 byte cache lines, as well as N and d are very large).</li>
+</ul></li>
+</ul>
+
+<h2>Part 3: Fused Attention (25 Points)</h2>
+
+<p>By now we've seen that multiplying <span class="math">\(Q * K^{T}\)</span> results in a massive NxN matrix. Doing the matrix multiplies and softmax in seperate functions requies that we write each row of our NxN matrix, and then do another pass over this NxN matrix in the subsequent softmax, and then do a third pass over the softmax'd matrix when multipling it by V. Not only is this bad for cache performance, but it is very bad for our program's memory footprint. </p>
+
+<p>Fortunately, we can resolve both issues by "fusing" the calculation, such that we only require one Nx1 temporary vector instead of an NxN temporary matrix.</p>
+
+<p>You can do this by observing the following fact. Once we've calculated a single row of the <span class="math">\(Q * K^t\)</span> NxN matrix, we are actually ready to softmax that entire row, and we don't have to calculate the rest of the NxN matrix to do so.</p>
+
+<p>Once that row is softmax'd, we can then immediately multiply the softmax'd row by V to fully compute the first row of our attention output (which is of reasonable size: Nxd). In other words, we can calculate just one row of <span class="math">\(Q * K^{t}\)</span>, softmax it, then multiply that softmax's row by V. Doing this does not require creating the NxN matrix...it requires creating only one Nx1 size intermediate vector to hold the first row of <span class="math">\(Q*K^{t}\)</span> and then its softmax. We can then re-use this same Nx1 array to calculate the 2nd row of attention, and then the third, etc. This means that we never materialize the NxN matrix, which is great because that matrix is never used again later in the network anyways. </p>
+
+<h3>Parallelizing with OpenMP</h3>
+
+<p>As you may notice, now that we have fused our matrix multiplications and softmax, we made a significant portion of the computation embarrassingly parallel. For example, we are able to independently compute batches, heads, and rows of our output matrix. This is a perfect opportunity for multi-threading! This time we will be using OpenMP, so you don't have to implement your own threadpools. The OpenMP syntax is relatively simple. If you want to parallelize an section of code, it would look like the following:</p>
+
+<pre><code>#pragma omp parallel for collapse()
+
+-- code is here --
+</code></pre>
+
+<p>You will find <code>#pragma omp parallel for collapse()</code> useful if you find loops directly nested on top of one another and want to parallelize them. For example, for a triple perfectly nested loop:</p>
+
+<pre><code>#pragma omp parallel for collapse(3)
+
+for ()
+
+    for()
+
+        for()
+</code></pre>
+
+<p>Note: You'd usually want to be careful when writing to a single Nx1 temporary row when using OpenMP, as this is a race condition. To work around this, we give you a skeleton of the first three loops (you will need more loops) in which each OpenMP thread gets assigned its own copy of the Nx1 temporary array, in a way that avoids race conditions. This local copy of the array is a slice/subset of the temporary memory we allocate for you, and pass into the function (<code>myFusedAttention</code>) as an argument. Keep in mind that any variables declared inside the loop(s) you are trying to parallelize will be private to each thread.</p>
+
+<h3>Testing:</h3>
+
+<p>Run the following test to check your program's correctness:</p>
+
+<pre><code>python3 gpt149.py part3
+</code></pre>
+
+<p>A correct implementation should yield the following output:</p>
+<!--
+<pre><code>REFERENCE - FUSED ATTENTION statistics
+cpu time:  32.361ms
+mem usage:  557052 bytes
+
+STUDENT - FUSED ATTENTION statistics
+cpu time:  33.209ms
+mem usage:
+</code></pre>
+-->
+
+
+
+<!--
 <h2>Part 1: A Simple (But Not So Efficient) Implementation of Attention (10 Points)</h2>
 
 <p>
@@ -504,7 +713,7 @@ for ()
 </code></pre>
 
 <p>A correct implementation should yield the following output:</p>
-
+-->
 <pre><code>REFERENCE - FUSED ATTENTION statistics
 cpu time:  32.361ms
 mem usage:  557052 bytes

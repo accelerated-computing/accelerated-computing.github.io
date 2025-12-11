@@ -45,7 +45,7 @@
 </nav></header>
 <main>
 
-<h1>Lab 11: Big Graph Processing</h1>
+<h1>Project 1: Big Graph Processing in OpenMP</h1>
 
 <h2>Prologue: Logistics</h2>
 <h3>Due Dates</h3>
@@ -66,6 +66,208 @@
 repository</a>:</p>
 <pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">git</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> clone git@github.com:accelerated-computing-class/lab11.git</span>
 </span></pre>
+
+<p><strong>84 points total</strong></p>
+
+<p>If you complete this assignment, you will receive up to 10 bonus points on one of the regular programming assignments (PA1-PA4). 
+    However, this extra credit can only boost an assignment to 100 points.</p>
+
+<h2>Overview</h2>
+
+<p>In this assignment, you will implement <a href="https://en.wikipedia.org/wiki/Breadth-first_search">breadth-first search</a> (BFS). 
+    A good implementation of this assignment will be able to run this algorithm on graphs containing hundreds of millions of edges on a multi-core machine in only seconds.</p>
+
+<h2>Environment Setup</h2>
+
+<p>Final grading of this assignment will be performed on the Myth machines.</p>
+
+<p>The assignment starter code is available on <a href="https://github.com/stanford-cs149/biggraphs-ec">Github</a>. Please clone the Assignment 5 starter code using:</p>
+
+<pre><code>git clone https://github.com/stanford-cs149/biggraphs-ec.git
+</code></pre>
+
+<h4>Background: Learning OpenMP</h4>
+
+<p>In this assignment we'd like you to use <a href="http://openmp.org/">OpenMP</a> for multi-core parallelization. OpenMP is an API and set of C-language extensions that provides compiler support for parallelism. You can also use OpenMP to tell the compiler to parallelize iterations of <code>for</code> loops, and to manage mutual exclusion. It is well documented online, but here is a brief example of parallelizing a <code>for</code> loop, with mutual exclusion.</p>
+
+<pre><code>/* The iterations of this for loop may be parallelized by the compiler */      
+#pragma omp parallel for                                                      
+for (int i = 0; i &lt; 100; i++) {  
+
+    /* different iterations of this part of the loop body may be
+        run in parallel on different cores */
+
+    #pragma omp critical                                                          
+    {
+    /* This block will be executed by at most one thread at a time. */
+    printf("Thread %d got iteration %lu\n", omp_get_thread_num(), i);           
+    }                                                                             
+}
+</code></pre>
+
+<p>Please see OpenMP documentation for the syntax for how to tell OpenMP to use different forms of static or dynamic scheduling. (For example, <code>omp parallel for schedule(dynamic 100)</code> distributes iterations to threads using dynamic scheduling with a chunk size of 100 iterations). You can think of the implementation as a dynamic work queue where threads in the thread pool pull off 100 iterations at once, like what <a href="https://gfxcourses.stanford.edu/cs149/fall24/lecture/perfopt1/slide_11">we talked about in these lecture slides</a>.</p>
+
+<p>Here is an example for an atomic counter update in OpenMP.</p>
+
+<pre><code>int my_counter = 0;
+#pragma omp parallel for                                                        
+for (int i = 0; i &lt; 100; i++) {                                                      
+    if ( ... some condition ...) {
+        #pragma omp atomic
+        my_counter++;
+    }
+}
+</code></pre>
+
+<p>We expect you to be able to read OpenMP documentation on your own (Google will be very helpful), but here are some useful links to get you started:</p>
+
+<ul>
+<li>The OpenMP 3.0 specification: <a href="http://www.openmp.org/mp-documents/spec30.pdf">http://www.openmp.org/mp-documents/spec30.pdf</a>.</li>
+<li>An OpenMP cheat sheet <a href="http://openmp.org/mp-documents/OpenMP3.1-CCard.pdf">http://openmp.org/mp-documents/OpenMP3.1-CCard.pdf</a>.</li>
+<li>OpenMP has support for reductions on shared variables, and for declaring thread-local copies of variables.</li>
+<li>This is a nice guide for the <code>omp parallel_for</code> directives: <a href="http://www.inf.ufsc.br/~bosco.sobral/ensino/ine5645/OpenMP_Dynamic_Scheduling.pdf">http://www.inf.ufsc.br/~bosco.sobral/ensino/ine5645/OpenMP_Dynamic_Scheduling.pdf</a></li>
+</ul>
+
+<h4>Background: Representing Graphs</h4>
+
+<p>The starter code operates on directed graphs, whose implementation you can find in <code>graph.h</code> and <code>graph_internal.h</code>. We recommend you begin by understanding the graph representation in these files. A graph is represented by an array of edges (both <code>outgoing_edges</code> and <code>incoming_edges</code>), where each edge is represented by an integer describing the id of the destination vertex. Edges are stored in the graph sorted by their source vertex, so the source vertex is implicit in the representation. This makes for a compact representation of the graph, and also allows it to be stored contiguously in memory. For example, to iterate over the outgoing edges for all nodes in the graph, you'd use the following code which makes use of convenient helper functions defined in <code>graph.h</code> (and implemented in <code>graph_internal.h</code>):</p>
+
+<pre><code>for (int i=0; i&lt;num_nodes(g); i++) {
+    // Vertex is typedef'ed to an int. Vertex* points into g.outgoing_edges[]
+    const Vertex* start = outgoing_begin(g, i);
+    const Vertex* end = outgoing_end(g, i);
+    for (const Vertex* v=start; v!=end; v++)
+    printf("Edge %u %u\n", i, *v);
+}
+</code></pre>
+
+<h4>Dataset</h4>
+
+<p>In this project, you will use a large graph dataset to test the performance. The dataset can be found depending on your setup:</p>
+
+<ul>
+<li>If you are working on a myth machine, the path to graphs directory is <code>/afs/ir.stanford.edu/class/cs149/data/asst3_graphs/</code></li>
+<li>If you are working on your local machine, the dataset can be downloaded from <a href="http://cs149.stanford.edu/cs149asstdata/all_graphs.tgz">http://cs149.stanford.edu/cs149asstdata/all_graphs.tgz</a>. You can download the dataset using <code>wget http://cs149.stanford.edu/cs149asstdata/all_graphs.tgz</code>, and then untar it with <code>tar -xzvf all_graphs.tgz</code>. Be careful, this is a 3 GB download.</li>
+</ul>
+
+<p>Some interesting real-world graphs include:</p>
+
+<ul>
+<li>com-orkut_117m.graph</li>
+<li>oc-pokec_30m.graph</li>
+<li>soc-livejournal1_68m.graph</li>
+</ul>
+
+<p>Your useful synthetic, but large graphs include:</p>
+
+<ul>
+<li>random_500m.graph</li>
+<li>rmat_200m.graph</li>
+</ul>
+
+<p>There are also some very small graphs for testing. If you look in the <code>/tools</code> directory of the starter code, you'll notice a useful program called <code>graphTools.cpp</code> that can be used to make your own graphs as well.</p>
+
+<h2>Part 1: Parallel "Top Down" Breadth-First Search (20 points)</h2>
+
+<p>Breadth-first search (BFS) is a common algorithm that might have seen in a prior algorithms class (See <a href="https://www.hackerearth.com/practice/algorithms/graphs/breadth-first-search/tutorial/">here</a> and <a href="https://www.youtube.com/watch?v=oDqjPvD54Ss">here</a> for helpful references.)
+Please familiarize yourself with the function <code>bfs_top_down()</code> in <code>bfs/bfs.cpp</code>, which contains a sequential implementation of BFS. The code uses BFS to compute the distance to vertex 0 for all vertices in the graph. You may wish to familiarize yourself with the graph structure defined in <code>common/graph.h</code> as well as the simple array data structure <code>vertex_set</code> (<code>bfs/bfs.h</code>), which is an array of vertices used to represent the current frontier of BFS.</p>
+
+<p>You can run bfs using:</p>
+
+<pre><code>./bfs &lt;PATH_TO_GRAPHS_DIRECTORY&gt;/rmat_200m.graph
+</code></pre>
+
+<p>where <code>&lt;PATH_TO_GRAPHS_DIRECTORY&gt;</code> is the path to the directory containing the graph files (see the "Dataset" section above).</p>
+
+<p>When you run <code>bfs</code>, you'll see execution time and the frontier size printed for each step in the algorithm. Correctness will pass for the top-down version (since we've given you a correct sequential implementation), but it will be slow. (Note that <code>bfs</code> will report failures for a "bottom up" and "hybrid" versions of the algorithm, which you will implement later in this assignment.)</p>
+
+<p>In this part of the assignment your job is to parallelize top-down BFS. You'll need to focus on identifying parallelism, as well as inserting the appropriate synchronization to ensure correctness. We wish to remind you that you <strong>should not</strong> expect to achieve near-perfect speedups on this problem (we'll leave it to you to think about why!).</p>
+
+<p><strong>Tips/Hints:</strong></p>
+
+<ul>
+<li>Always start by considering what work can be done in parallel.</li>
+<li>Some parts of the computation may need to be synchronized, for example, by wrapping the appropriate code within a critical region using <code>#pragma omp critical</code> or <code>#pragma omp atomic</code>. <strong>However, in this problem you should think about how to make use of the simple atomic operation called <code>compare and swap</code>.</strong> You can read about <a href="https://gcc.gnu.org/onlinedocs/gcc-9.4.0/gcc/_005f_005fsync-Builtins.html">GCC's implementation of compare and swap</a>, which is exposed to C code as the function <code>__sync_bool_compare_and_swap</code>. If you can figure out how to use compare-and-swap for this problem, you will achieve much higher performance than using a critical region.</li>
+<li>Updating a shared counter can be done efficiently using <code>#pragma omp atomic</code> before a line like <code>counter++;</code>.</li>
+<li>Are there conditions where it is possible to avoid using <code>compare_and_swap</code>? In other words, when you <em>know</em> in advance that the comparison will fail?</li>
+<li>There is a preprocessor macro <code>VERBOSE</code> to make it easy to disable useful print per-step timings in your solution (see the top of <code>bfs/bfs.cpp</code>). In general, these printfs occur infrequently enough (only once per BFS step) that they do not notably impact performance, but if you want to disable the printfs during timing, you can use this <code>#define</code> as a convenience.</li>
+</ul>
+
+<h2>Part 2: "Bottom Up" BFS (25 points)</h2>
+
+<p>Think about what behavior might cause a performance problem in the BFS implementation from Part 1.2. An alternative implementation of a breadth-first search step may be more efficient in these situations. Instead of iterating over all vertices in the frontier and marking all vertices adjacent to the frontier, it is possible to implement BFS by having <em>each vertex check whether it should be added to the frontier!</em> Basic pseudocode for the algorithm is as follows:</p>
+
+<pre><code>for each vertex v in graph:
+    if v has not been visited AND 
+       v shares an incoming edge with a vertex u on the frontier:
+          add vertex v to frontier;
+</code></pre>
+
+<p>This algorithm is sometimes referred to as a "bottom up" implementation of BFS, since each vertex looks "up the BFS tree" to find its ancestor. (As opposed to being found by its ancestor in a "top down" fashion, as was done in Part 1.2.)</p>
+
+<p>Please implement a bottom-up BFS to compute the shortest path to all the vertices in the graph from the root (see <code>bfs_bottom_up()</code> in <code>bfs/bfs.cpp</code>). Start by implementing a simple sequential version. Then parallelize your implementation.</p>
+
+<p><strong>Tips/Hints:</strong></p>
+
+<ul>
+<li>It may be useful to think about how you represent the set of unvisited nodes. Do the top-down and bottom-up versions of the code lend themselves to different implementations?</li>
+<li>How do the synchronization requirements of the bottom-up BFS change?</li>
+</ul>
+
+<h2>Part 3: Hybrid BFS (25 points)</h2>
+
+<p>Notice that in some steps of the BFS, the "bottom up" BFS is significantly faster than the top-down version. In other steps, the top-down version is significantly faster. This suggests a major performance improvement in your implementation, if <strong>you could dynamically choose between your "top down" and "bottom up" formulations based on the size of the frontier or other properties of the graph!</strong> If you want a solution competitive with the reference one, your implementation will likely have to implement this dynamic optimization. Please provide your solution in <code>bfs_hybrid()</code> in <code>bfs/bfs.cpp</code>.</p>
+
+<p><strong>Tips/Hints:</strong></p>
+
+<ul>
+<li>If you used different representations of the frontier in Parts 1.2 and 1.3, you may have to convert between these representations in the hybrid solution. How might you efficiently convert between them? Is there an overhead in doing so?</li>
+</ul>
+
+<p>You can run our grading script via: <code>./bfs_grader &lt;path to graphs directory&gt;</code>, which will report correctness and a performance points score for a number of graphs.</p>
+
+<h2>Grading and Handin</h2>
+
+<p>Along with your code, we would like you to hand in a clear but concise high-level description of how your implementation works as well as a brief description of how you arrived at your solutions. Specifically address approaches you tried along the way, and how you went about determining how to optimize your code (For example, what measurements did you perform to guide your optimization efforts?).</p>
+
+<p>Aspects of your work that you should mention in the write-up include:</p>
+
+<ol>
+<li>Include both partners' names at the top of your write-up.</li>
+<li>Run bfs_grader on a Myth machine and insert a copy of the score table in your solutions. <strong>We will use Myth machines to grade your code.</strong></li>
+<li>
+<p>Describe the process of optimizing your code:</p>
+
+<ul>
+<li>In Part 1 (Top Down) and 2 (Bottom Up), where is the synchronization in each of your solutions? Do you do anything to limit the overhead of synchronization?</li>
+<li>In Part 3 (Hybrid), did you decide to switch between the top-down and bottom-up BFS implementations dynamically? How did you decide which implementation to use?</li>
+<li>Why do you think your code (and the staff reference) is unable to achieve perfect speedup? (Is it workload imbalance? communication/synchronization? data movement?)</li>
+</ul>
+</li>
+</ol>
+
+<h2>Points Distribution</h2>
+
+<p>The 84 points on this assignment are allotted as follows:</p>
+
+<ul>
+<li>70 points: BFS performance</li>
+<li>14 points: Write-up</li>
+</ul>
+
+<p>If you earn <code>x</code> points on this assignment, we will boost your grade on any prior programming assignment by <code>(x/84) * 10</code> points, rounded to the nearest tenth.</p>
+
+<h2>Hand-in Instructions</h2>
+
+<p>Please submit your work using Gradescope.</p>
+
+<ol>
+<li><strong>Please submit your writeup as a PDF in the Gradescope assignment Programming Assignment 5 (Writeup).</strong></li>
+<li><strong>To submit your code, run <code>sh create_submission.h</code> to generate a <code>tar.gz</code> file and submit it to Programming Assignment 5 (Code).</strong> We only look that your <code>bfs/bfs.cpp</code> and <code>bfs/bfs.h</code> file, so do not change any other files. Before submitting the source files, make sure that all code is compilable and runnable! We should be able to simply make, then execute your programs in the <code>/bfs</code> directories without manual intervention.</li>
+</ol>
+
+<p>Our grading scripts will rerun the checker code allowing us to verify your score matches what you submitted in your writeup. We may also run your code on other datasets to further examine its correctness.</p>
+
 
 </main>
 <footer><p><a href="https://tech.msu.edu/technology/accessibility/">Accessibility</a></p></footer>

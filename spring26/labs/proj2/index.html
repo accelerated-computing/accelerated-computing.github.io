@@ -38,7 +38,7 @@
 </nav></header>
 
 <main>
-<h1>Project 2: Distributed Programming using MPI</h1>
+<h1>Project 2: Distributed Programming with MPI</h1>
 
 <h2>Prologue: Logistics</h2>
 <h3>Due Dates</h3>
@@ -72,7 +72,7 @@ repository</a>:</p>
 
 <p>All of these aspects of serial applications are transferable to parallel applications, as we shall see later in the course.</p>
 
-<h2>Warm-up</h2>
+<h3>Warm-up</h3>
 
 <p>Review the section in <a href="../assets/EijkhoutIntroToHPC2020.pdf">HPSC</a> on computing arithmetic intensity for given compute kernels.<br>
 Then, as a group, compute the arithmetic intensities of the following kernels in units of FLOPs/byte, assuming 8 bytes per float.</p>
@@ -91,7 +91,7 @@ Then, as a group, compute the arithmetic intensities of the following kernels in
 
 <p>Included a table in your project report listing the arithmetic intensities for these kernels.</p>
 
-<h2>Part 1: Matrix-matrix Multiplication</h2>
+<h3>Part 1: Matrix-matrix Multiplication</h3>
 
 <p>In this first part of the project, you will test the performance of the basic matrix-matrix multiplication operation as a function of matrix size on multiple compute platforms. Complete the following using at least two different compute architectures (e.g., your laptop and HPCC, or two different node architectures on HPCC).</p>
 
@@ -111,7 +111,7 @@ Then, as a group, compute the arithmetic intensities of the following kernels in
 
 <p>To your project git repo, commit your code for performing the matrix-matrix multiply performance measurements, the plots of your results, and a brief write-up (in plain text or markdown) addressing the above questions and discussing your results. Pay particular attention to the comparison between different architectures and give explanations for them.</p>
 
-<h2>Part 2: The Roofline Model</h2>
+<h3>Part 2: The Roofline Model</h3>
 
 <p>In this part, you will explore the roofline model for analyzing the interplay between arithmetic intensity and memory bandwidth for architectures with complex memory hierarchies. Complete the following exercises on the <em>SAME</em> compute architectures that you used in Part 1 above.</p>
 
@@ -151,7 +151,7 @@ Then, as a group, compute the arithmetic intensities of the following kernels in
     </li>
   </ul>
 
-  <h2>Part 1: Warm-up Exercises</h2>
+  <h3>Part 1: Warm-up Exercises</h3>
   <p>As a group, complete the following exercises from HPSC (<a href="../assets/EijkhoutIntroToHPC2020.pdf">Eijkhout Intro to HPC</a>).</p>
   <ul>
     <li>Exercise 2.18</li>
@@ -163,7 +163,7 @@ Then, as a group, compute the arithmetic intensities of the following kernels in
   </ul>
   <p>Include your responses to these exercises in your project write-up.</p>
 
-  <h2>Part 2: Setup on HPCC</h2>
+  <h3>Part 2: Setup on HPCC</h3>
   <p>The following is a very quick tutorial on the basics of using HPCC for this class.</p>
   <ol>
     <li>Log in to the HPCC gateway:
@@ -183,7 +183,7 @@ module load intel/2021a</code></pre>
     <li>Run <code>devjob</code> to request 4 tasks for 90 minutes. This should be sufficient for most of the stuff we do during class, though for your projects you will at times require more resources. The above <code>module</code> and <code>alias</code> commands can be added to your <code>~/.bashrc</code> so that they are automatically executed when you log in.</li>
   </ol>
 
-  <h2>Part 3: MPI Basics</h2>
+  <h3>Part 3: MPI Basics</h3>
   <ol>
     <li>Clone your Project 2 repo from GitHub on HPCC.</li>
     <li>In the project directory you will find a simple "Hello World!" source file in C++. Compile and run the code. Example:
@@ -197,7 +197,7 @@ module load intel/2021a</code></pre>
     <li>Complete Exercises 2.3, 2.4, and 2.5 in the <a href="../assets/EijkhoutParallelProgramming.pdf">Parallel Programming</a> book.</li>
   </ol>
 
-  <h2>Part 4: Eat Some Pi</h2>
+  <h3>Part 4: Eat Some Pi</h3>
   <p>
     Pi is the ratio of a circle's circumference to its diameter. One Monte Carlo method to approximate &pi;:
     randomly generate points in a square that bounds a circle and compute the fraction inside the circle. If <code>f = nc / ns</code> (points in circle / total points), then <code>pi ≈ 4f</code>. More points => better approximation.
@@ -226,7 +226,7 @@ module load intel/2021a</code></pre>
     </li>
   </ol>
 
-  <h2>What to turn-in</h2>
+  <h3>What to turn-in</h3>
   <p>
     To your git project repo, commit your final working code for the above exercises and a concise write-up including:
   </p>
@@ -240,7 +240,7 @@ module load intel/2021a</code></pre>
 
 <h2>Section 2: MPI Ping-Pong and Ring Shift</h2>
 
-<h2>Background</h2>
+<h3>Background</h3>
 
 <p>
 The ping-pong problem is a benchmark often used to evaluate the performance of message passing interfaces (MPI) in parallel computing. 
@@ -256,7 +256,7 @@ holding a unique subset of a larger array of data. The goal is to shift the data
 wrapping around the ends of the ring as necessary.
 </p>
 
-<h2>Part 1: Blocking Ping-Pong</h2>
+<h3>Part 1: Blocking Ping-Pong</h3>
 
 <p>Your task is to implement the ping-pong problem using MPI in C or C++ and analyze the behavior and performance of your code. Specifically, you should:</p>
 
@@ -285,14 +285,14 @@ wrapping around the ends of the ring as necessary.
   </li>
 </ol>
 
-<h2>Part 2: Non-block Ping-Pong</h2>
+<h3>Part 2: Non-block Ping-Pong</h3>
 
 <p>
 Repeat Part 1 using non-blocking MPI communication (i.e., <code>MPI_Isend()</code> and <code>MPI_Irecv()</code>). 
 Explicit synchronization (e.g., via <code>MPI_Wait()</code>) is required. Compare results to the blocking case.
 </p>
 
-<h2>Part 3: MPI Ring Shift</h2>
+<h3>Part 3: MPI Ring Shift</h3>
 
 <ol>
   <li>
@@ -311,19 +311,231 @@ Explicit synchronization (e.g., via <code>MPI_Wait()</code>) is required. Compar
   </li>
 </ol>
 
-<h2>Part 4: Non-blocking MPI Ring Shift</h2>
+<h3>Part 4: Non-blocking MPI Ring Shift</h3>
 
 <p>
 Repeat Part 3 using non-blocking communication with <code>MPI_Isend()</code> and <code>MPI_Irecv()</code>. 
 Compare with the blocking results.
 </p>
 
-<h2>What to turn in</h2>
+<h3>What to turn in</h3>
 
 <p>
 Commit your final working code and a concise write-up to your git repo. Include all plots and detailed answers 
 to the analysis questions.
 </p>
+
+<h2>Section 3: Advanced MPI topics</h2>
+
+<p>In this project, you will gain experience with some of the slightly more advanced features of MPI for distributed-memory parallelism.</p>
+
+<h3>Part 1: Latency hiding in three-point average</h3>
+
+<p>Look at the example C++ code in the project repo. This code implements a blocking ghost zone exchange for a 1D vector assuming periodic boundary conditions. The operation performed in parallel on the vector is a simple three-point rolling averaging.</p>
+
+<ol>
+  <li>Come up with a design plan for how to adapt this code to implement "latency hiding." By this we mean to overlap communication and calculation by posting non-blocking communication calls, then instead of waiting for those calls to complete, going ahead and perform all calculations that do not depend on the data being communicated.</li>
+  <li>Now, go ahead with implementing a latency-hiding version of the three point averaging function. Check that your code works and gives the correct result on 1, 2, and 4 processors.</li>
+  <li>Compare the performance of the non-blocking version of the code to the blocking version of the code for multiple numbers of ranks keeping the array size per-rank fixed.</li>
+</ol>
+
+<h3>Part 2: Latency hiding with one-sided MPI</h3>
+
+<ol>
+  <li>Watch the <a href="https://youtu.be/CW2EDMRyEH8">lecture by Bill Gropp on One-sided MPI</a>.</li>
+  <li>Modify your three-point averaging code to use one-sided MPI communication to achieve the halo exchanges.</li>
+  <li>Implement overlapping communication and calculation then be sure to correctly handle computing the "boundary" values that depend on halo data.</li>
+  <li>Verify that you get sensible results for arbitrary number of processors and global array sizes.</li>
+  <li>Compare the relative performance of the non-blocking and one-sided versions of your three-point averaging code for various numbers of ranks keeping the array size per-rank fixed.</li>
+</ol>
+
+<h3>Part 3: Custom data types in MPI</h3>
+
+<p>This exercise based on <a href="https://tech.io/playgrounds/349/introduction-to-mpi/custom-types">https://tech.io/playgrounds/349/introduction-to-mpi/custom-types.</a></p>
+
+<p><strong>Note:</strong> the example C++ code here uses C++11 features, 
+  so make sure you pass any necessary flags to your compiler. 
+  This may be an issue on Macs using <code>clang</code>. 
+  In that case, pass the <code>-std=c++11</code> flag to <code>clang</code> (or <code>mpic++</code>, as it were) and you should be good to go.</p>
+
+<p>As you might have noticed, all datatypes in MPI communications are atomic types: 
+  an element corresponds to one singular value. 
+  Moreover, every communication forces you to use a contiguous buffer with the same datatype. 
+  Sometimes, it might be desirable to give additional information and meaning to the communications by creating higher-level structures. 
+  MPI allows us to do that in the form of <strong>derived</strong> or custom datatypes. 
+  To make our point, let's take a simple example:</p>
+
+<p>Let's consider a system with <code>N</code> processes where all processes are charged with generating data while process 0 centralizes and stores the data. 
+  The data generated by the processes corresponds to this struct :</p>
+
+<pre><code>struct CustomData {
+  int n_values;
+  double dbl_values[10];
+};
+</code></pre>
+
+<p>Every process generates <code>M</code> of these custom structures, and then send them to process 0. 
+  What we want here is a simple gather on process 0 of all the values, 
+  but we are limited at the moment with MPI and cannot do that in a simple way. 
+  If we wanted to send this kind of data structure with the knowledge we currently have, 
+  we would do it in a fashion similar to that shown in <code>types_example.cpp</code>.</p>
+
+<p>As you can see from this very naive version, everything looks a lot more complicated than it should be. 
+  First we have to separate the values from every process into two tables, one for integer values, one for double values. 
+  Also note how the indexing part starts to become confusing with linear indexing on the double table. 
+  Then we have to gather everything in two passes and finally unpack everything in the final structure.</p>
+
+<p>This problem could be solved in a simpler way using derived datatypes. 
+  A datatype can be defined easily by specifying a sequence of couples. 
+  Each couple represent a <strong>block</strong> : <code>(type, displacement)</code>. 
+  The type is one of the usual types used in MPI, while the displacement indicates the offset in bytes where this data block starts in memory. For instance, if we wanted to use a structure like this :</p>
+
+<pre><code>struct DataType {
+  int int_val;
+  char char_val;
+  float float_val;
+};
+</code></pre>
+
+<p>We could describe this, as : <code>[(int, 0), (char, 4), (float, 5)]</code>. 
+  As for the example above, well the description is a bit more complicated since we have 10 double each time, 
+  but the idea is the same. Now, there are multiple ways of creating datatypes in MPI. 
+  For instance, there is a dedicated way to repeat the same datatype multiple times. 
+  There is also a more complex way of creating datatypes by generating lists such as the one showed above. 
+  We are going to see the simpler version here and the complex in the following exercise.</p>
+
+<h3>Vectors</h3>
+
+<p>Of course the simplest form of custom datatype is the simple repetition of the same type of data. 
+  For instance, if we were handling points in a 3D reference frame, 
+  then we would like to manipulate a <code>Point</code> structure with three doubles in it. 
+  We can achieve this very simply using the <code>MPI_Type_contiguous</code> function. Its prototype is :</p>
+
+<pre><code>int MPI_Type_contiguous(int count, MPI_Datatype old_type, MPI_Datatype *new_type);
+</code></pre>
+
+<p>So if we want to create a vector datatype, we can easily do :</p>
+
+<pre><code>MPI_Datatype dt_point;
+MPI_Type_contiguous(3, MPI_DOUBLE, &dt_point);
+</code></pre>
+
+<p>We are not entirely done here, we need to <strong>commit</strong> the datatype. 
+  The commit operation allows MPI to generate a formal description of the buffers you will be sending and receiving. 
+  This is a mandatory operation. If you don't commit but still use your new datatype in communications, 
+  you are most likely to end up with invalid datatype errors. 
+  You can commit by simply calling <code>MPI_Type_commit</code>.</p>
+
+<pre><code>MPI_Type_commit(&dt_point);
+</code></pre>
+
+<p>Then we can freely use this in communications, see <code>vector_example.cpp</code></p>
+
+<p>Let's now move on to an exercise on custom datatypes.</p>
+
+<h3>Custom types - exercise</h3>
+
+<p>Above we have saw how to create very basic contiguous datatypes. 
+  This way of creating datatypes does not help us when we want to create datatypes that mix different basic types. 
+  For instance, in the previous example, we have seen a custom structure used to store the data :</p>
+
+<pre><code>struct CustomData {
+  int n_values;
+  double dbl_values[10];
+};
+</code></pre>
+
+<p>To represent this using the type/displacement formalism, our datatype would look something like :</p>
+
+<pre><code>[(int, 0), (double, 4), (double, 12), (double, 20), (double, 28), (double, 36), 
+(double, 44), (double, 52), (double, 60), (double, 68), (double, 76)]
+</code></pre>
+
+<p>To simplify everything, we can convert everyone of these couples as a triplet : 
+  <code>(type, start, number of elements)</code>. Thus our list simplifies to :</p>
+
+<pre><code>[(int, 0, 1), (double, 4, 10)]
+</code></pre>
+
+<p>MPI provides us with a special function to actually convert such a list in a datatype :</p>
+
+<pre><code>int MPI_Type_create_struct(int count, const int block_length[], 
+                           const MPI_Aint displacement[], 
+                           const MPI_Datatype types[], 
+                           MPI_Datatype *new_type);
+</code></pre>
+
+<p>Let's see these arguments one by one. <code>count</code> is the number of elements in your list, 
+  in our case we have two entries, so <code>count</code> will be 2.</p>
+
+<p><code>block_length</code> is an array of integers, indicating, 
+  for entry <code>i</code>, the number of contiguous elements of that type. 
+  That will be the third value of our triplet : 1 in the <code>int</code> case, 10 in the <code>double</code> case.</p>
+
+<p><code>displacement</code> is an array of <code>MPI_Aint</code>. 
+  <code>MPI_Aint</code> stands for <code>Address integer</code>. 
+  These are just a specific MPI type for integers. In our case, that's the second element of each triplet.</p>
+
+<p><code>types</code> is an array of <code>MPI_Datatypes</code>. 
+  This should be pretty obvious by now : 
+  it's an array of all the different sub-types we are going to use in the custom type.</p>
+
+<p>Finally, we store the resulting datatype in <code>new_type</code>.</p>
+
+<p>Knowing this, you are ready to optimise the example code from above, specifically, 
+  removing all the copies in memory and transferring all the data using only one gather communication.</p>
+
+<h3>Displacements</h3>
+
+<p>Now there is a catch with the displacement. 
+  Computing manually the offsets can be tricky. 
+  Although it tends to be less and less the case, some types have sizes that can vary on a system/OS basis, 
+  so hardcoding the values might lead to trouble. 
+  One way of doing things in a cleaner way is to use the <code>offsetof</code> macro from the standard library (You will have to include <code>stddef.h</code> in C or <code>cstddef</code> in C++). 
+  <code>offsetof</code> takes two parameters : a struct and the name of one attribute of the struct. 
+  It returns a <code>size_t</code> (implicitly castable in a <code>MPI_Aint</code>) corresponding to the displacement of this attribute.</p>
+
+<p>For example if we had the following structure :</p>
+
+<pre><code>struct MyStruct {
+  int a;
+  double b;
+  char c;
+  float d;
+};
+</code></pre>
+
+<p>Then, we could define out displacement table as :</p>
+
+<pre><code>MPI_Aint displacements[4] = {
+  offsetof(MyStruct, a),
+  offsetof(MyStruct, b),
+  offsetof(MyStruct, c),
+  offsetof(MyStruct, d)
+};
+</code></pre>
+
+<h3>Exercise</h3>
+
+<p>It's your turn to optimise the program we have made in the previous section. 
+  Use <code>MPI_Type_create_struct</code> to define a derived datatype and commit it so the data can be gathered on process 0. Start with the code in <code>create_struct.cpp</code>. 
+  Your output from the code should be identical to that in <code>create_struct.txt</code>.</p>
+
+<h3>Part 4: MPI Subcommunicators</h3>
+
+<p>In this exercise, you will gain some experience with creating subcommunicators in MPI. 
+  Refer to section 6.4 of the Parallel Programming text for help.</p>
+
+<p>Look at the non-functional code <code>mpi_subcommReduce.cpp</code>. 
+  Complete this code so that <code>MPI_COMM_WORLD</code> is divided into a 2D array of ranks. 
+  Split <code>MPI_COMM_WORLD</code> into a subcommunicator for each row <em>and</em> for each column. 
+  Then, produce sums along each row and column of the process <code>MPI_COMM_WORLD</code> rank numbers. 
+  Run your code for several different total number of ranks and row sizes. 
+  Have rank 0 for each communicator output the result. Verify that it is correct.</p>
+
+<h3>What to turn-in</h3>
+
+<p>To your git project repo, commit your final working code for the above exercises and a concise write-up including all plots, and detailed responses to the questions posed concerning your results.</p>
 
 </main>
 <footer><p><a href="https://tech.msu.edu/technology/accessibility/">Accessibility</a></p></footer>

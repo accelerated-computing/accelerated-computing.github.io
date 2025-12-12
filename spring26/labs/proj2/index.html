@@ -38,7 +38,7 @@
 </nav></header>
 
 <main>
-<h1>Project 2: Distributed Programming with MPI</h1>
+<h1>Distributed Programming with MPI</h1>
 
 <h2>Prologue: Logistics</h2>
 <h3>Due Dates</h3>
@@ -55,7 +55,7 @@
 </li>
 </ul>
 <h3>Starter Code</h3>
-<p>You can get the starter code for this lab by cloning the <a href="https://github.com/accelerated-computing-class/lab12">lab
+<p>You can get the starter code for this lab by cloning the <a href="https://github.com/accelerated-computing-class/proj2">lab
 repository</a>:</p>
 <pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">git</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> clone git@github.com:accelerated-computing-class/lab12.git</span>
 </span></pre>
@@ -136,106 +136,126 @@ Then, as a group, compute the arithmetic intensities of the following kernels in
 
 <h3>Goals for This Lab</h3>
 
-<p>In this project you will explore using basic MPI collectives on HPCC. After finishing this project, you should:</p>
-  <ul>
-    <li>understand how to parallelize a simple serial code with MPI,</li>
-    <li>understand how to use basic MPI collectives,</li>
-    <li>be able to run MPI-parallel applications on HPCC,</li>
-    <li>develop your theoretical understanding of key parallel computing concepts such as:
-      <ul>
-        <li>functional parallelism,</li>
-        <li>collective communication,</li>
-        <li>parallel scaling, and</li>
-        <li>parallel efficiency.</li>
-      </ul>
-    </li>
-  </ul>
+<h3>Part 1: Warm-up Exercises</h3>
 
-  <h3>Part 1: Warm-up Exercises</h3>
-  <p>As a group, complete the following exercises from HPSC (<a href="../assets/EijkhoutIntroToHPC2020.pdf">Eijkhout Intro to HPC</a>).</p>
-  <ul>
-    <li>Exercise 2.18</li>
-    <li>Exercise 2.19</li>
-    <li>Exercise 2.21</li>
-    <li>Exercise 2.22</li>
-    <li>Exercise 2.23</li>
-    <li>Exercise 2.27</li>
-  </ul>
-  <p>Include your responses to these exercises in your project write-up.</p>
+<p>As a group, complete the following exercises from 
+<a href="../assets/EijkhoutIntroToHPC2020.pdf">HPSC</a>.</p>
 
-  <h3>Part 2: Setup on HPCC</h3>
-  <p>The following is a very quick tutorial on the basics of using HPCC for this class.</p>
-  <ol>
-    <li>Log in to the HPCC gateway:
-      <pre><code>ssh &lt;netid&gt;@hpcc.msu.edu</code></pre>
-    </li>
-    <li>Then log in to the AMD-20 cluster from the gateway:
-      <pre><code>module load powertools
+<ul>
+  <li>Exercise 2.18</li>
+  <li>Exercise 2.19</li>
+  <li>Exercise 2.21</li>
+  <li>Exercise 2.22</li>
+  <li>Exercise 2.23</li>
+  <li>Exercise 2.27</li>
+</ul>
+
+<p>Include your responses to these exercises in your project write-up.</p>
+
+<h3>Part 2: Setup on HPCC</h3>
+
+<p>The following is a very quick tutorial on the basics of using HPCC for this class.</p>
+
+<ol>
+  <li>
+    Log in to the HPCC gateway:
+    <pre><code>ssh &lt;netid&gt;@hpcc.msu.edu</code></pre>
+  </li>
+
+  <li>
+    Then log in to the AMD-20 cluster from the gateway:
+    <pre><code>module load powertools
 amd20</code></pre>
-    </li>
-    <li>The default environment and software stack should be sufficient for this exercise, but if you run into issues compiling and running the code try:
-      <pre><code>module purge
+  </li>
+
+  <li>
+    The default environment and software stack should be sufficient for this exercise, but if you run into issues compiling and running the code try issuing the following commands.
+    <pre><code>module purge
 module load intel/2021a</code></pre>
-    </li>
-    <li>When using the HPCC for development and exercises in this class please <strong>do NOT</strong> just use the head node, <code>dev-amd20</code>. We will swamp the node and no one will get anything done. Instead, request an interactive job using the SLURM scheduler. An easy way to do this is to set up an alias command like so:
-      <pre><code>alias devjob='salloc -n 4 --time 1:30:00'</code></pre>
-    </li>
-    <li>Run <code>devjob</code> to request 4 tasks for 90 minutes. This should be sufficient for most of the stuff we do during class, though for your projects you will at times require more resources. The above <code>module</code> and <code>alias</code> commands can be added to your <code>~/.bashrc</code> so that they are automatically executed when you log in.</li>
-  </ol>
+  </li>
 
-  <h3>Part 3: MPI Basics</h3>
-  <ol>
-    <li>Clone your Project 2 repo from GitHub on HPCC.</li>
-    <li>In the project directory you will find a simple "Hello World!" source file in C++. Compile and run the code. Example:
-      <pre><code>g++ hello.cpp
+  <li>
+    When using the HPCC for development and exercises in this class please do NOT just use the head node, <code>dev-amd20</code>. We will swamp the node and no one will get anything done. Instead, request an interactive job using the SLURM scheduler. An easy way to do this is to set up an alias command like so:
+    <pre><code>alias devjob='salloc -n 4 --time 1:30:00'</code></pre>
+  </li>
+
+  <li>
+    Run <code>devjob</code>, then to request 4 tasks for 90 minutes. This should be sufficient for most of the stuff we do during class, though for your projects you will at times require more resources. The above <code>module</code> and <code>alias</code> commands can be added to your <code>.bashrc</code> so that they are automatically executed when you log in.
+  </li>
+</ol>
+
+<h3>Part 3: MPI Basics</h3>
+
+<ol>
+  <li>Clone your Project 2 repo from GitHub on HPCC.</li>
+
+  <li>
+    In the project directory you will find a simple "Hello World!" source file in C++. Compile and run the code. E.g.,
+    <pre><code>g++ hello.cpp
 ./a.out</code></pre>
-    </li>
-    <li>Now run the executable <code>a.out</code> using the MPI parallel run command and explain the output:
-      <pre><code>mpiexec -n 4 ./a.out</code></pre>
-    </li>
-    <li>Add the calls <code>MPI_Init</code> and <code>MPI_Finalize</code> to your code. Put three different print statements in your code: one before the init, one between init and finalize, and one after the finalize. Recompile and run the executable in serial and with <code>mpiexec</code>, and explain the output.</li>
-    <li>Complete Exercises 2.3, 2.4, and 2.5 in the <a href="../assets/EijkhoutParallelProgramming.pdf">Parallel Programming</a> book.</li>
-  </ol>
+  </li>
 
-  <h3>Part 4: Eat Some Pi</h3>
-  <p>
-    Pi is the ratio of a circle's circumference to its diameter. One Monte Carlo method to approximate &pi;:
-    randomly generate points in a square that bounds a circle and compute the fraction inside the circle. If <code>f = nc / ns</code> (points in circle / total points), then <code>pi ≈ 4f</code>. More points => better approximation.
-  </p>
-  <ol>
-    <li>
-      Look at the C program <code>ser_pi_calc</code>. Extend this program using collective MPI routines to compute &pi; in parallel using the method described above. You may use C++ if you prefer.
-    </li>
-    <li>
-      For the first iteration, perform the same number of "rounds" on each MPI rank. Measure the total runtime using <code>MPI_WTIME()</code>. Vary the number of ranks used from 1 to 4. How does the total runtime change?
-    </li>
-    <li>
-      Now, divide the number of "rounds" up among the ranks using appropriate MPI routines to distribute the work. Run the program on 1 to 4 ranks. How does the runtime vary now?
-    </li>
-    <li>
-      Change the number of "darts" and ranks. Use your MPI program to compute &pi; using total numbers of darts of <code>1E3</code>, <code>1E6</code>, and <code>1E9</code>. For each dart count, run on HPCC with processor counts of 1, 2, 4, 8, 16, 32, and 64. Keep track of the computed &pi; and runtimes. Use non-interactive jobs and modify <code>submitjob.sb</code> as needed.
-    </li>
-    <li>
-      For each processor count, plot the resulting errors in your computed values of &pi; (compared to the true value) as functions of the number of darts. Use log-log scaling. What is the rate of convergence? Does it make sense? Does error or convergence rate vary with processor count? Should it?
-    </li>
-    <li>
-      For each dart count, plot runtime versus processor count (strong scaling study). Also plot the "ideal" scaling line. Calculate parallel scaling efficiency for each dart count. Does parallel performance vary with dart count? Explain.
-    </li>
-    <li>
-      Going further: try running on different node types on HPCC with varied core counts. Ensure runs utilize multiple nodes so the network is used. Do you see a change in communication cost when the job runs on more than one node?
-    </li>
-  </ol>
+  <li>
+    Now run the executable <code>a.out</code> using the MPI parallel run command and explain the output:
+    <pre><code>mpiexec -n 4 ./a.out</code></pre>
+  </li>
 
-  <h3>What to turn-in</h3>
-  <p>
-    To your git project repo, commit your final working code for the above exercises and a concise write-up including:
-  </p>
-  <ul>
-    <li>responses to the warm-up exercises,</li>
-    <li>performance and accuracy data for your calculations of &pi;,</li>
-    <li>the plots made in Part 4, and</li>
-    <li>detailed responses to the questions posed concerning your results.</li>
-  </ul>
+  <li>
+    Add the commands <code>MPI_Init</code> and <code>MPI_Finalize</code> to your code. Put three different print statements in your code: one before the init, one between init and finalize, and one after the finalize. Recompile and run the executable, both in serial and with <code>mpiexec</code>, and explain the output.
+  </li>
+
+  <li>
+    Complete Exercises 2.3, 2.4, and 2.5 in the 
+    <a href="../assets/EijkhoutParallelProgramming.pdf">Parallel Programming</a> book.
+  </li>
+</ol>
+
+<h3>Part 4: Eat Some Pi</h3>
+
+<p>
+Pi is the ratio of a circle's circumference to its diameter. As such, the value of pi can be computed as follows. 
+Consider a circle of radius <code>r</code> inscribed in a square of side length <code>r</code>. Randomly generate points within the square. 
+Determine the number of points in the square that are also in the circle. 
+If <code>f = nc/ns</code> is the number of points in the circle divided by the number of points in the square then <code>pi</code> can be approximated as <code>pi ~ 4f</code>. 
+Note that the more points generated, the better the approximation.
+</p>
+
+<ol>
+  <li>
+    Look at the C program <code>ser_pi_calc</code>. Extend this program using collective MPI routines to compute <code>pi</code> in parallel using the method described above. Feel free to use C++, if you prefer, of course.
+  </li>
+
+  <li>
+    For the first iteration, perform the same number of "rounds" on each MPI rank. Measure the total runtime using <code>MPI_WTIME()</code>. Vary the number of ranks used from 1 to 4. How does the total runtime change?
+  </li>
+
+  <li>
+    Now, divide the number of "rounds" up amongst the number of ranks using the appropriate MPI routines to decide how to distribute the work. Again, run the program on 1 to 4 ranks. How does the runtime vary now?
+  </li>
+
+  <li>
+    Now let's change the number of "darts" and ranks. Use your MPI program to compute <code>pi</code> using total numbers of "darts" of 1E3, 1E6, and 1E9. For each dart count, run your code on HPCC with processor counts of 1, 2, 4, 8, 16, 32, and 64. Keep track of the resulting value of <code>pi</code> and the runtimes. Use non-interactive jobs and modify the <code>submitjob.sb</code> script as necessary.
+  </li>
+
+  <li>
+    For each processor count, plot the resulting errors in your computed values of <code>pi</code> compared to the true value as functions of the number of darts used to compute it. Use log-log scaling on this plot. What is the rate of convergence of your algorithm for computing <code>pi</code>? Does this value make sense? Does the error or rate of convergence to the correct answer vary with processor count? Should it?
+  </li>
+
+  <li>
+    For each dart count, make a plot of runtime versus processor count. Each line represents a "strong scaling" study for your code. For each dart count, also plot the "ideal" scaling line. Calculate the parallel scaling efficiency of your code for each dart count. Does the parallel performance vary with dart count? Explain your answer.
+  </li>
+
+  <li>
+    Going further. Try running your code on different node types on HPCC with varied core counts. In particular, try to ensure that your runs utilize multiple nodes so that the communication network is used. Do you see a change in the communication cost when the job is run on more than one node?
+  </li>
+</ol>
+
+<h3>What to turn in</h3>
+
+<p>
+To your git project repo, commit your final working code for the above exercises and a concise write-up including responses to the warm-up exercises, performance and accuracy data for your calculations of <code>pi</code>, the plots made in Part 4, and detailed responses to the questions posed concerning your results.
+</p>
+
 
 
 <h2>Section 2: MPI Ping-Pong and Ring Shift</h2>
@@ -243,17 +263,11 @@ module load intel/2021a</code></pre>
 <h3>Background</h3>
 
 <p>
-The ping-pong problem is a benchmark often used to evaluate the performance of message passing interfaces (MPI) in parallel computing. 
-In this problem, two processes exchange messages back and forth a specified number of times, with each process sending a message and 
-receiving a message alternately. In the ping-pong, process <code>i</code> sends a message of size <code>m</code> to process <code>j</code>, 
-then receives a message of size <code>m</code> back from <code>j</code>. The values of <code>i</code>, <code>j</code>, 
-and <code>m</code> to use are given below.
+The ping-pong problem is a benchmark often used to evaluate the performance of message passing interfaces (MPI) in parallel computing. In this problem, two processes exchange messages back and forth a specified number of times, with each process sending a message and receiving a message alternately. In the ping-pong, process <code>i</code> sends a message of size <code>m</code> to process <code>j</code>, then receives a message of size <code>m</code> back from <code>j</code>. The values of <code>i</code>, <code>j</code>, and <code>m</code> to use are given below.
 </p>
 
 <p>
-The "ring shift" problem is similar to ping-pong. In the MPI ring shift, a group of processes is arranged in a ring, with each process 
-holding a unique subset of a larger array of data. The goal is to shift the data elements by a specified number of positions around the ring, 
-wrapping around the ends of the ring as necessary.
+The "ring shift" problem is similar to ping-pong. In the MPI ring shift, a group of processes is arranged in a ring, with each process holding a unique subset of a larger array of data. The goal is to shift the data elements by a specified number of positions around the ring, wrapping around the ends of the ring as necessary.
 </p>
 
 <h3>Part 1: Blocking Ping-Pong</h3>
@@ -261,69 +275,46 @@ wrapping around the ends of the ring as necessary.
 <p>Your task is to implement the ping-pong problem using MPI in C or C++ and analyze the behavior and performance of your code. Specifically, you should:</p>
 
 <ol>
-  <li>
-    Implement the ping-pong problem using MPI in C or C++. Use blocking <code>MPI_Send()</code> and 
-    <code>MPI_Recv()</code> calls. You should define the number of iterations and the size of the message to be exchanged.
-  </li>
-  <li>
-    Measure the time taken to complete the ping-pong exchange for different message sizes. Use <code>MPI_Wtime()</code> 
-    to obtain timestamps before and after the exchange. Vary the message size from 2 bytes to 4 kilobytes in powers of 2 
-    (i.e., 2, 4, 8, ..., 2048, 4096 bytes). Perform 100 iterations for each size.
-  </li>
-  <li>
-    Record the total amount of data sent and received during the ping-pong exchange for each configuration.
-  </li>
-  <li>
-    Repeat steps 2 and 3 but ensure that the 2 communicating processes reside on different physical nodes on HPCC.
-  </li>
-  <li>
-    Plot the average communication time of a single exchange (send + receive) versus message size for the two cases. 
-    Estimate the <em>latency</em> and <em>bandwidth</em>. Discuss whether they differ and why.
-  </li>
-  <li>
-    Analyze and discuss your results. Explain the behavior of the resulting curves.
-  </li>
+  <li>Implement the ping-pong problem using MPI in C or C++. Use blocking <code>MPI_Send()</code> and <code>MPI_Recv()</code> calls. You should define the number of iterations and the size of the message to be exchanged.</li>
+
+  <li>Measure the time taken to complete the ping-pong exchange for different message sizes. You should use the <code>MPI_Wtime()</code> function to obtain the time before and after the exchange and calculate the elapsed time. Vary the message size from 2 bytes to 4 kilobytes in powers of 2 (i.e., 2 bytes, 4 bytes, 8 bytes,..., 2048 bytes, 4096 bytes). For each message size, perform 100 iterations of the ping-pong to build up statistical significance.</li>
+
+  <li>Record the total amount of data sent and received during the ping-pong exchange for each configuration.</li>
+
+  <li>Repeat steps 2 and 3 but ensure that the 2 processes that are communicating reside on different physical hardware nodes on HPCC.</li>
+
+  <li>Plot the average communication time of a single exchange (send and receive) as a function of message size for the two cases. Using this plot, estimate the <em>latency</em> and <em>bandwidth</em> for each case. Are they different? Explain your results.</li>
+
+  <li>Analyze and discuss your results. Explain the behavior of the resulting curves.</li>
 </ol>
 
 <h3>Part 2: Non-block Ping-Pong</h3>
 
-<p>
-Repeat Part 1 using non-blocking MPI communication (i.e., <code>MPI_Isend()</code> and <code>MPI_Irecv()</code>). 
-Explicit synchronization (e.g., via <code>MPI_Wait()</code>) is required. Compare results to the blocking case.
-</p>
+<p>Repeat Part 1 using non-blocking MPI communication, i.e., using <code>MPI_Isend()</code> and <code>MPI_Irecv()</code>. You will need to include explicit process synchronization using, e.g., <code>MPI_Wait()</code> calls. Compare the results to the blocking case.</p>
 
 <h3>Part 3: MPI Ring Shift</h3>
 
 <ol>
-  <li>
-    Implement the MPI ring shift in C or C++ for arbitrary numbers of processes and message sizes. 
-    Use <code>MPI_Sendrecv()</code> rather than separate send/recv calls.
-  </li>
-  <li>
-    Vary message sizes from 2 bytes to 4 KB (powers of 2). Also vary the number of processes from 2 to <code>N</code>, 
-    in powers of 2, where <code>N</code> is large enough that rank 0 and rank <code>N-1</code> reside on separate nodes.
-  </li>
-  <li>
-    Compute bandwidth and latency. Plot bandwidth versus message size, with separate lines for each process count.
-  </li>
-  <li>
-    Analyze and discuss your results. Explain the behavior of the resulting curves.
-  </li>
+  <li>Implement the MPI ring shift in C or C++ for an arbitrary number of processes in the ring and arbitrary message size (i.e., number of elements per process). In your implementation, use <code>MPI_Sendrecv()</code> instead of separate <code>MPI_Send()</code> and <code>MPI_Recv()</code> calls.</li>
+
+  <li>As in Parts 1 and 2, vary the message size from 2 bytes to 4 kb, in powers of 2. Also vary the number of processes used from 2 to <code>N</code>, in powers of 2, where <code>N</code> is sufficiently large that rank 0 and rank <code>N-1</code> are guaranteed to reside on separate nodes (<code>N</code> will depend on which cluster you are using on HPCC).</li>
+
+  <li>Compute the bandwidth and latency, as above. Plot the bandwidth as a function of message size. Include separate lines for each number of processes used.</li>
+
+  <li>Analyze and discuss your results. Explain the behavior of the resulting curves.</li>
 </ol>
 
 <h3>Part 4: Non-blocking MPI Ring Shift</h3>
 
-<p>
-Repeat Part 3 using non-blocking communication with <code>MPI_Isend()</code> and <code>MPI_Irecv()</code>. 
-Compare with the blocking results.
-</p>
+<p>Repeat Part 3 but using non-blocking communication via <code>MPI_Isend()</code> and <code>MPI_Irecv()</code>. Compare the results to the blocking case.</p>
 
-<h3>What to turn in</h3>
+<h3>What to turn-in</h3>
 
 <p>
-Commit your final working code and a concise write-up to your git repo. Include all plots and detailed answers 
-to the analysis questions.
+To your git project repo, commit your final working code for the above exercises and a concise write-up including all plots, and detailed responses to the questions posed concerning your results.
 </p>
+
+
 
 <h2>Section 3: Advanced MPI topics</h2>
 

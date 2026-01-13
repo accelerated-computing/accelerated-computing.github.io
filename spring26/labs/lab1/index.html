@@ -57,15 +57,15 @@
 Lab instructions and starter code are released on the course website.</p>
 </li>
 <li>
-<p><strong>Monday</strong> – <strong>Checkpoint Due</strong> <br>
+<p><strong>Tuesday of first week</strong> – <strong>Checkpoint Due</strong> <br>
 You turn in a low-stakes “lab checkpoint,” designed to get you started on the lab and to prepare for the live lab discussion on Tuesday.</p>
 </li>
 <li>
-<p><strong>Tuesday</strong> – <strong>Live Lab Session</strong> <br>
-The whole class gathers for a 2-hour in-person session to discuss the week’s lab, help answer each others’ questions, and collectively investigate different optimization strategies and performance puzzles.</p>
+<p><strong>Thursday of first week</strong> – <strong>Live Lab Session</strong> <br>
+The whole class gathers for an in-person session to discuss the week’s lab, help answer each others’ questions, and collectively investigate different optimization strategies and performance puzzles.</p>
 </li>
 <li>
-<p><strong>Friday</strong> – <strong>Final Submission Due</strong> <br>
+<p><strong>Tuesday of second week</strong> – <strong>Final Submission Due</strong> <br>
 You turn in your final submission for the lab, usually containing a few code files and a brief write-up formatted as a PDF.</p>
 </li>
 </ol>
@@ -76,7 +76,7 @@ You turn in your final submission for the lab, usually containing a few code fil
 <pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">git</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> clone git@github.com:accelerated-computing-class/lab1.git</span>
 </span></pre>
 <h3>Setting up Telerun</h3>
-<p>To run all the code we write in this course, we’ll be using <a href="https://github.com/accelerated-computing-class/telerun">Telerun</a>, a system we built to allow students to compile and run code on remote machines.</p>
+<p>To run all the code we write in this course, we’ll be using <a href="https://github.com/accelerated-computing/Telerun-setup">Telerun</a>, a system we built to allow students to compile and run code on remote machines.</p>
 <p>Telerun is a system for running single C++/CUDA source files on remote machines and getting the output of their execution. Telerun provides a <code>submit</code> command which automatically handles:</p>
 <ul>
 <li>
@@ -94,7 +94,7 @@ You turn in your final submission for the lab, usually containing a few code fil
 </ul>
 <p>In order to use Telerun, the only thing you need to have installed on your computer  (other than Telerun itself) is a Python interpreter.</p>
 <p>Before you start this lab, you should download and log in to Telerun using the instructions provided here:</p>
-<p>&gt;&gt;&gt; <strong><a href="https://github.com/accelerated-computing-class/telerun">Telerun Setup Instructions</a></strong> &lt;&lt;&lt;</p>
+<p>&gt;&gt;&gt; <strong><a href="https://github.com/accelerated-computing/Telerun-setup">Telerun Setup Instructions</a></strong> &lt;&lt;&lt;</p>
 <p>Like the rest of this course, Telerun is brand-new and experimental – it <em>will</em> have bugs! If you have any trouble setting up or using Telerun, please contact course staff on <a href="/spring26/piazza">Piazza</a>.</p>
 <h2>Introduction</h2>
 <h3>Goals for This Lab</h3>
@@ -120,7 +120,7 @@ You turn in your final submission for the lab, usually containing a few code fil
 </li>
 </ol>
 <p>We’ll look at what implementing each of these strategies looks like on both CPUs and GPUs. Along the way, we’ll be teaching you a tiny bit of CUDA (you’re not expected to have ever used CUDA before).</p>
-<p>For the <strong>lab checkpoint</strong>, the only thing we’ll ask you to turn in is a brief summary of how much progress you’ve made (especially on <a href="https://github.com/accelerated-computing-class/telerun">setting up Telerun</a>), and anything you’re stuck on. For the <strong>final submission</strong>, you’ll be turning in a scalar implementation of Mandelbrot in CUDA, and vector-parallel implementations of Mandelbrot for CPU and GPU. More information on what you’ll be turning in can be found in the “Deliverables” section at the bottom of this page.</p>
+<p>For the <strong>lab checkpoint</strong>, the only thing we’ll ask you to turn in is a brief summary of how much progress you’ve made (especially on <a href="https://github.com/accelerated-computing/Telerun-setup">setting up Telerun</a>), and anything you’re stuck on. For the <strong>final submission</strong>, you’ll be turning in a scalar implementation of Mandelbrot in CUDA, and vector-parallel implementations of Mandelbrot for CPU and GPU. More information on what you’ll be turning in can be found in the “Deliverables” section at the bottom of this page.</p>
 <h2>Part 1: Scalar Mandelbrot</h2>
 <h3>CPU: Reference Implementation (Already Written)</h3>
 <p>In this lab, we’ll be studying ways to parallelize the following computation:</p>
@@ -152,7 +152,7 @@ You turn in your final submission for the lab, usually containing a few code fil
 </span></span><span class="highlight-meta highlight-function highlight-c++"><span class="highlight-meta highlight-block highlight-c++"><span class="highlight-punctuation highlight-section highlight-block highlight-end highlight-c++">}</span></span></span>
 </span></pre>
 <p>This code populates a two-dimensional buffer of integers which can be used to visualize the <a href="https://en.wikipedia.org/wiki/Mandelbrot_set">Mandelbrot fractal</a>, if the integers are converted to colors (for this reason, we’ll call each individual element of the <code>out</code> buffer a “pixel”). You can try running this code with:</p>
-<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">python3</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> telerun.py submit mandelbrot_cpu.cpp</span>
+<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">python3</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> telerun submit mandelbrot_cpu.cpp</span>
 </span></pre>
 <p>to measure its run time and see what kind of images it produces (look in <code>./telerun-out</code>).</p>
 <p>There are many interesting things which can be said about the mathematics of the Mandelbrot fractal and algorithms for computing it, but for the purposes of this lab, we’re not concerned with where this algorithm came from or how to intuitively interpret what it’s doing.</p>
@@ -231,7 +231,7 @@ in the body of <code>launch_mandelbrot_gpu_scalar</code>. This will launch the k
 </ol>
 <p>If this seems straightforward, that’s because it is! This step in the lab is only meant to start getting you familiar with some of the basic elements of CUDA.</p>
 <p>Once you’ve filled in the scalar CUDA implementation, you can run it with:</p>
-<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">python3</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> telerun.py submit mandelbrot_gpu.cu</span>
+<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">python3</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> telerun submit mandelbrot_gpu.cu</span>
 </span></pre>
 <blockquote>
 <p><strong>Question 1 for final write-up</strong>: How does the run time of the scalar GPU implementation compare to the scalar CPU implementation? What factors do you think might contribute to each of their run times?</p>
@@ -294,7 +294,7 @@ for (let i = 0; i < 32; i++) {
 </div>
 <p>Don’t worry too much if you get stuck at first – we’ll have a chance during live lab to help each other figure out how to get un-stuck.</p>
 <p>You can test your <code>mandelbrot_cpu_vector</code> code by running <code>mandelbrot_cpu.cpp</code> as you did earlier:</p>
-<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">python3</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> telerun.py submit mandelbrot_cpu.cpp</span>
+<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">python3</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> telerun submit mandelbrot_cpu.cpp</span>
 </span></pre>
 <blockquote>
 <p><strong>Question 2 for final write-up</strong>: How did you initialize <code>cx</code> and <code>cy</code>? How did you handle differences in the number of inner loop iterations between pixels in the same vector? How does the performance of your vectorized implementation compare to the scalar versions?</p>
@@ -336,7 +336,7 @@ To do this, we need to implement two functions:</p>
 <p>For our launch configuration, CUDA exposes the index of each kernel instance in a special integer variable called <code>threadIdx.x</code>. In the first lane of the implicit SIMD vector this will have the value <code>0</code>, in the second it will have value <code>1</code>, and so on.</p>
 <p>Using that, your next job is to implement <code>mandelbrot_gpu_vector</code> so that it computes 32-wide rows of pixels at a time when launched by <code>launch_mandelbrot_gpu_vector</code>. Don’t worry if the control flow is different across different instances of your kernel. Even though it executes in SIMD style, the hardware knows how to ensure that your program executes <em>as if</em> every instance were running independently.</p>
 <p>As before, you can run your GPU code with Telerun:</p>
-<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">python3</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> telerun.py submit mandelbrot_gpu.cu</span>
+<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">python3</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> telerun submit mandelbrot_gpu.cu</span>
 </span></pre>
 <blockquote>
 <p><strong>Question 3 for final write-up</strong>: How does the performance of your vectorized implementation compare to the scalar versions? Given how you implemented the vector-parallel CPU version with explicit SIMD, how do you think the GPU executes multiple kernel instances that run different numbers of iterations?</p>

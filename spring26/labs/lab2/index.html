@@ -39,10 +39,10 @@
 <p>For this lab, you’ll be turning in the following deliverables:</p>
 <ul>
 <li>
-<p><strong>Checkpoint</strong>: Due Monday, September 15, 11:59pm. On the Gradescope assignment for the Lab 2 checkpoint, submit your answers to the prelab questions (Part 0 of the lab).</p>
+<p><strong>Checkpoint</strong>: Due Friday, January 30, 11:59pm. On the Gradescope assignment for the Lab 2 checkpoint, submit your answers to the prelab questions (Part 0 of the lab).</p>
 </li>
 <li>
-<p><strong>Final Submission</strong>: Due Saturday, September 20, 11:59pm. On the Gradescope assignments for Lab 2, submit your <strong>completed code</strong> for <code>mandelbrot_cpu_2.cpp</code> and <code>mandelbrot_gpu_2.cpp</code>, as well as a PDF writeup containing your answers to Questions 1 - 8 below, answering each question with roughly a sentence or two.</p>
+<p><strong>Final Submission</strong>: Due Friday, February 6, 11:59pm. On the Gradescope assignments for Lab 2, submit your <strong>completed code</strong> for <code>mandelbrot_cpu_2.cpp</code> and <code>mandelbrot_gpu_2.cpp</code>, as well as a PDF writeup containing your answers to Questions 1 - 8 below, answering each question with roughly a sentence or two.</p>
 </li>
 </ul>
 <h3>Starter Code</h3>
@@ -378,6 +378,23 @@ asm volatile("mov.u64 %0, %%clock64;" : "=l"(end_time));
 <blockquote>
 <p><strong>Question 8 for final write-up:</strong> In your CPU and GPU implementations, how much speedup, if any, were you able to achieve by adding your ILP optimizations back in on top of your multi-core, multi-threaded algorithms? How does the speedup from increasing ILP in this setting compare to the speedup from increasing ILP in the single-threaded, single-core setting? What seems to be the optimal number of threads in this setting on CPU and GPU, and what is the optimal number of independent vectors of pixels to process at once in the inner loop? What factors do you think might be contributing to what you observe?</p>
 </blockquote>
+<h2>Deliverables</h2>
+<ul>
+    <li>
+        <p><strong>C++</strong>: <code>mandelbrot_cpu_2.cpp</code> with all implementations </p>
+    </li>
+    <li>
+        <p><strong>CUDA</strong>: <code>fma-latency.cu</code> and <code>mandelbrot_gpu_2.cu</code> with all implementations</p>
+    </li>
+    <li>
+        <p><strong>PDF:</strong> Your responses to questions 1-8 along with the plot generated for Question 4.
+        </p>
+    </li>
+    <li>
+        <p><strong>PNG:</strong> One screenshot for each <code>.cpp</code>/<code>.cu</code> file showing your terminal output.
+        </p>
+    </li>
+</ul>
 <h2>Extensions &amp; Extra Credit</h2>
 <ul>
 <li>

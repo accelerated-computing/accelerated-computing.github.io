@@ -329,7 +329,7 @@ asm volatile("mov.u64 %0, %%clock64;" : "=l"(end_time));
 <p>You can access the index of the current block using the magic variable <code>blockIdx.x</code>.</p>
 </li>
 </ol>
-<p>Finally, you may find it helpful to know that you can access the total number of blocks the kernel was launched with using the variable <code>grimDim.x</code>, and access the number of CUDA threads per block with the variable <code>blockDim.x</code>.</p>
+<p>Finally, you may find it helpful to know that you can access the total number of blocks the kernel was launched with using the variable <code>gridDim.x</code>, and access the number of CUDA threads per block with the variable <code>blockDim.x</code>.</p>
 <p>We’re now ready to write the multi-core vector-parallel GPU Mandelbrot implementation:</p>
 <blockquote>
 <p><strong>Deliverable:</strong> In the file <code>mandelbrot_gpu_2.cu</code>, implement the functions <code>mandelbrot_gpu_vector_multicore</code> and <code>launch_mandelbrot_gpu_vector_multicore</code> to run exactly one warp on each warp scheduler of the GPU.</p>

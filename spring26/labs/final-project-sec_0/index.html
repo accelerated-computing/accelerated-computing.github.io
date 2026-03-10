@@ -1,0 +1,91 @@
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>Home</title><base href="/spring26/labs/lab10/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
+    font-weight: regular;
+    font-style: regular;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bold.otf") format("opentype");
+    font-weight: bold;
+    font-style: regular;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-italic.otf") format("opentype");
+    font-weight: regular;
+    font-style: italic;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bolditalic.otf") format("opentype");
+    font-weight: bold;
+    font-style: italic;
+}</style><link href="/spring26/assets/main.css" rel="stylesheet">
+<link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet">
+<link href="/spring26/assets/favicon.png" rel="icon" type="image/png">
+</head>
+
+<body><header><nav>
+<h1><a href="/spring26/">Home</a></h1>
+<p><a href="/spring26/calendar">Calendar</a></p>
+<p><a href="/spring26/labs">Labs</a></p>
+<p><a href="/spring26/lectures">Lectures</a></p>
+<p><a href="/spring26/syllabus">Syllabus</a></p>
+<p><a href="/spring26/resources">Resources</a></p>
+<p><a href="/spring26/contact">Contact</a></p>
+<p><a href="/spring26/piazza">Piazza</a></p>
+</nav></header>
+
+<main>
+<h1>Section 0: Getting started with GitHub, the HPCC, and MPI</h1>
+<h2>Part 1: Setup on HPCC</h2>
+<p>The following is a very quick tutorial on the basics of using HPCC for this class.</p>
+
+<ol>
+  <li>
+    Log in to the HPCC gateway:
+    <pre><code>ssh &lt;netid&gt;@hpcc.msu.edu</code></pre>
+  </li>
+
+  <li>
+    Then log in to the AMD-20 cluster from the gateway:
+    <pre><code>module load powertools
+amd20</code></pre>
+  </li>
+
+  <li>
+    The default environment and software stack should be sufficient for this exercise, but if you run into issues compiling and running the code try issuing the following commands.
+    <pre><code>module purge
+module load intel/2021a</code></pre>
+  </li>
+
+  <li>
+    When using the HPCC for development and exercises in this class please do NOT just use the head node, <code>dev-amd20</code>. We will swamp the node and no one will get anything done. Instead, request an interactive job with 4 cores and for 90 minutes using the SLURM scheduler:
+    <pre><code>salloc -n 4 --time 1:30:00</code></pre>
+  </li>
+</ol>
+
+<h2>Part 2: MPI Basics</h2>
+
+<ol>
+  <li>
+    Join the classroom with the <a href="https://classroom.github.com/a/Y8AsUmhd">this link</a>. This is our first assignment using GitHub classroom's, so it will ask you to link your GitHub account with your class identifier. 
+  <li>
+    In the project directory you will find a simple "Hello World!" source file in C++. Compile and run the code. E.g.,
+    <pre><code>g++ hello.cpp
+./a.out</code></pre>
+  </li>
+
+  <li>
+    Now run the executable <code>a.out</code> using the MPI parallel run command and explain the output:
+    <pre><code>mpiexec -n 4 ./a.out</code></pre>
+  </li>
+
+  <li>
+    Add the commands <code>MPI_Init</code> and <code>MPI_Finalize</code> to your code. Put three different print statements in your code: one before the init, one between init and finalize, and one after the finalize. Recompile and run the executable, both in serial and with <code>mpiexec</code>, and explain the output.
+  </li>
+</ol>
+</main>
+<footer><p><a href="https://tech.msu.edu/technology/accessibility/">Accessibility</a></p></footer>
+</body></html>

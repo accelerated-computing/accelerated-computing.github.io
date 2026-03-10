@@ -61,7 +61,7 @@ module load intel/2021a</code></pre>
   </li>
 
   <li>
-    When using the HPCC for development and exercises in this class please do NOT just use the head node, <code>dev-amd20</code>. We will swamp the node and no one will get anything done. Instead, request an interactive job with 4 cores and for 90 minutes using the SLURM scheduler:
+    When using the HPCC for development and exercises in this class please do NOT just use the head node, <code>dev-amd20</code>. We will swamp the node and no one will get anything done. Instead, request an interactive job. For example, you can request 4 cores for 90 minutes using the SLURM scheduler:
     <pre><code>salloc -n 4 --time 1:30:00</code></pre>
   </li>
 </ol>
@@ -86,6 +86,17 @@ module load intel/2021a</code></pre>
     Add the commands <code>MPI_Init</code> and <code>MPI_Finalize</code> to your code. Put three different print statements in your code: one before the init, one between init and finalize, and one after the finalize. Recompile and run the executable, both in serial and with <code>mpiexec</code>, and explain the output.
   </li>
 </ol>
+<h2>What to turn in (and how)</h2>
+<p>
+Moving forward, you will primarily submit your assignment by pushing the final version of your code to GitHub. Please make sure to check out the link in the repo's readme if you are new to Git or GitHub (we've included a link to a tutorial that will get you started in less than 10 minutes). We might ocassionally ask you to submit your final, working version of the code through GradeScope to verify the program's functionality, but we'll let you know ahead of time.
+</p>
+<p>
+For this assignment you only need to push the following to your repo: 
+</p>
+<ul>
+  <li><code>hello.cpp</code>, modified to be executed in parallel with MPI</li>
+  <li>A reflection with your observations on the behavior of this multi-core program. Write these in your <code>README.md</code></li>
+</ul>
 </main>
 <footer><p><a href="https://tech.msu.edu/technology/accessibility/">Accessibility</a></p></footer>
 </body></html>

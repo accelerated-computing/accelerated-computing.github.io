@@ -1,0 +1,255 @@
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>Home</title><base href="/spring26/labs/lab10/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
+    font-weight: regular;
+    font-style: regular;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bold.otf") format("opentype");
+    font-weight: bold;
+    font-style: regular;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-italic.otf") format("opentype");
+    font-weight: regular;
+    font-style: italic;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bolditalic.otf") format("opentype");
+    font-weight: bold;
+    font-style: italic;
+}</style><link href="/spring26/assets/main.css" rel="stylesheet">
+<link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet">
+<link href="/spring26/assets/favicon.png" rel="icon" type="image/png">
+</head>
+
+<body><header><nav>
+<h1><a href="/spring26/">Home</a></h1>
+<p><a href="/spring26/calendar">Calendar</a></p>
+<p><a href="/spring26/labs">Labs</a></p>
+<p><a href="/spring26/lectures">Lectures</a></p>
+<p><a href="/spring26/syllabus">Syllabus</a></p>
+<p><a href="/spring26/resources">Resources</a></p>
+<p><a href="/spring26/contact">Contact</a></p>
+<p><a href="/spring26/piazza">Piazza</a></p>
+</nav></header>
+
+<main>
+<h2>Section 3: Advanced MPI topics</h2>
+
+<p>In this project, you will gain experience with some of the slightly more advanced features of MPI for distributed-memory parallelism.</p>
+
+<h3>Part 1: Latency hiding in three-point average</h3>
+
+<p>Look at the example C++ code in the project repo. This code implements a blocking ghost zone exchange for a 1D vector assuming periodic boundary conditions. The operation performed in parallel on the vector is a simple three-point rolling averaging.</p>
+
+<ol>
+  <li>Come up with a design plan for how to adapt this code to implement "latency hiding." By this we mean to overlap communication and calculation by posting non-blocking communication calls, then instead of waiting for those calls to complete, going ahead and perform all calculations that do not depend on the data being communicated.</li>
+  <li>Now, go ahead with implementing a latency-hiding version of the three point averaging function. Check that your code works and gives the correct result on 1, 2, and 4 processors.</li>
+  <li>Compare the performance of the non-blocking version of the code to the blocking version of the code for multiple numbers of ranks keeping the array size per-rank fixed.</li>
+</ol>
+
+<h3>Part 2: Latency hiding with one-sided MPI</h3>
+
+<ol>
+  <li>Watch the <a href="https://youtu.be/CW2EDMRyEH8">lecture by Bill Gropp on One-sided MPI</a>.</li>
+  <li>Modify your three-point averaging code to use one-sided MPI communication to achieve the halo exchanges.</li>
+  <li>Implement overlapping communication and calculation then be sure to correctly handle computing the "boundary" values that depend on halo data.</li>
+  <li>Verify that you get sensible results for arbitrary number of processors and global array sizes.</li>
+  <li>Compare the relative performance of the non-blocking and one-sided versions of your three-point averaging code for various numbers of ranks keeping the array size per-rank fixed.</li>
+</ol>
+
+<h3>Part 3: Custom data types in MPI</h3>
+
+<p>This exercise based on <a href="https://tech.io/playgrounds/349/introduction-to-mpi/custom-types">https://tech.io/playgrounds/349/introduction-to-mpi/custom-types.</a></p>
+
+<p><strong>Note:</strong> the example C++ code here uses C++11 features, 
+  so make sure you pass any necessary flags to your compiler. 
+  This may be an issue on Macs using <code>clang</code>. 
+  In that case, pass the <code>-std=c++11</code> flag to <code>clang</code> (or <code>mpic++</code>, as it were) and you should be good to go.</p>
+
+<p>As you might have noticed, all datatypes in MPI communications are atomic types: 
+  an element corresponds to one singular value. 
+  Moreover, every communication forces you to use a contiguous buffer with the same datatype. 
+  Sometimes, it might be desirable to give additional information and meaning to the communications by creating higher-level structures. 
+  MPI allows us to do that in the form of <strong>derived</strong> or custom datatypes. 
+  To make our point, let's take a simple example:</p>
+
+<p>Let's consider a system with <code>N</code> processes where all processes are charged with generating data while process 0 centralizes and stores the data. 
+  The data generated by the processes corresponds to this struct :</p>
+
+<pre><code>struct CustomData {
+  int n_values;
+  double dbl_values[10];
+};
+</code></pre>
+
+<p>Every process generates <code>M</code> of these custom structures, and then send them to process 0. 
+  What we want here is a simple gather on process 0 of all the values, 
+  but we are limited at the moment with MPI and cannot do that in a simple way. 
+  If we wanted to send this kind of data structure with the knowledge we currently have, 
+  we would do it in a fashion similar to that shown in <code>types_example.cpp</code>.</p>
+
+<p>As you can see from this very naive version, everything looks a lot more complicated than it should be. 
+  First we have to separate the values from every process into two tables, one for integer values, one for double values. 
+  Also note how the indexing part starts to become confusing with linear indexing on the double table. 
+  Then we have to gather everything in two passes and finally unpack everything in the final structure.</p>
+
+<p>This problem could be solved in a simpler way using derived datatypes. 
+  A datatype can be defined easily by specifying a sequence of couples. 
+  Each couple represent a <strong>block</strong> : <code>(type, displacement)</code>. 
+  The type is one of the usual types used in MPI, while the displacement indicates the offset in bytes where this data block starts in memory. For instance, if we wanted to use a structure like this :</p>
+
+<pre><code>struct DataType {
+  int int_val;
+  char char_val;
+  float float_val;
+};
+</code></pre>
+
+<p>We could describe this, as : <code>[(int, 0), (char, 4), (float, 5)]</code>. 
+  As for the example above, well the description is a bit more complicated since we have 10 double each time, 
+  but the idea is the same. Now, there are multiple ways of creating datatypes in MPI. 
+  For instance, there is a dedicated way to repeat the same datatype multiple times. 
+  There is also a more complex way of creating datatypes by generating lists such as the one showed above. 
+  We are going to see the simpler version here and the complex in the following exercise.</p>
+
+<h3>Vectors</h3>
+
+<p>Of course the simplest form of custom datatype is the simple repetition of the same type of data. 
+  For instance, if we were handling points in a 3D reference frame, 
+  then we would like to manipulate a <code>Point</code> structure with three doubles in it. 
+  We can achieve this very simply using the <code>MPI_Type_contiguous</code> function. Its prototype is :</p>
+
+<pre><code>int MPI_Type_contiguous(int count, MPI_Datatype old_type, MPI_Datatype *new_type);
+</code></pre>
+
+<p>So if we want to create a vector datatype, we can easily do :</p>
+
+<pre><code>MPI_Datatype dt_point;
+MPI_Type_contiguous(3, MPI_DOUBLE, &dt_point);
+</code></pre>
+
+<p>We are not entirely done here, we need to <strong>commit</strong> the datatype. 
+  The commit operation allows MPI to generate a formal description of the buffers you will be sending and receiving. 
+  This is a mandatory operation. If you don't commit but still use your new datatype in communications, 
+  you are most likely to end up with invalid datatype errors. 
+  You can commit by simply calling <code>MPI_Type_commit</code>.</p>
+
+<pre><code>MPI_Type_commit(&dt_point);
+</code></pre>
+
+<p>Then we can freely use this in communications, see <code>vector_example.cpp</code></p>
+
+<p>Let's now move on to an exercise on custom datatypes.</p>
+
+<h3>Custom types - exercise</h3>
+
+<p>Above we have saw how to create very basic contiguous datatypes. 
+  This way of creating datatypes does not help us when we want to create datatypes that mix different basic types. 
+  For instance, in the previous example, we have seen a custom structure used to store the data :</p>
+
+<pre><code>struct CustomData {
+  int n_values;
+  double dbl_values[10];
+};
+</code></pre>
+
+<p>To represent this using the type/displacement formalism, our datatype would look something like :</p>
+
+<pre><code>[(int, 0), (double, 4), (double, 12), (double, 20), (double, 28), (double, 36), 
+(double, 44), (double, 52), (double, 60), (double, 68), (double, 76)]
+</code></pre>
+
+<p>To simplify everything, we can convert everyone of these couples as a triplet : 
+  <code>(type, start, number of elements)</code>. Thus our list simplifies to :</p>
+
+<pre><code>[(int, 0, 1), (double, 4, 10)]
+</code></pre>
+
+<p>MPI provides us with a special function to actually convert such a list in a datatype :</p>
+
+<pre><code>int MPI_Type_create_struct(int count, const int block_length[], 
+                           const MPI_Aint displacement[], 
+                           const MPI_Datatype types[], 
+                           MPI_Datatype *new_type);
+</code></pre>
+
+<p>Let's see these arguments one by one. <code>count</code> is the number of elements in your list, 
+  in our case we have two entries, so <code>count</code> will be 2.</p>
+
+<p><code>block_length</code> is an array of integers, indicating, 
+  for entry <code>i</code>, the number of contiguous elements of that type. 
+  That will be the third value of our triplet : 1 in the <code>int</code> case, 10 in the <code>double</code> case.</p>
+
+<p><code>displacement</code> is an array of <code>MPI_Aint</code>. 
+  <code>MPI_Aint</code> stands for <code>Address integer</code>. 
+  These are just a specific MPI type for integers. In our case, that's the second element of each triplet.</p>
+
+<p><code>types</code> is an array of <code>MPI_Datatypes</code>. 
+  This should be pretty obvious by now : 
+  it's an array of all the different sub-types we are going to use in the custom type.</p>
+
+<p>Finally, we store the resulting datatype in <code>new_type</code>.</p>
+
+<p>Knowing this, you are ready to optimise the example code from above, specifically, 
+  removing all the copies in memory and transferring all the data using only one gather communication.</p>
+
+<h3>Displacements</h3>
+
+<p>Now there is a catch with the displacement. 
+  Computing manually the offsets can be tricky. 
+  Although it tends to be less and less the case, some types have sizes that can vary on a system/OS basis, 
+  so hardcoding the values might lead to trouble. 
+  One way of doing things in a cleaner way is to use the <code>offsetof</code> macro from the standard library (You will have to include <code>stddef.h</code> in C or <code>cstddef</code> in C++). 
+  <code>offsetof</code> takes two parameters : a struct and the name of one attribute of the struct. 
+  It returns a <code>size_t</code> (implicitly castable in a <code>MPI_Aint</code>) corresponding to the displacement of this attribute.</p>
+
+<p>For example if we had the following structure :</p>
+
+<pre><code>struct MyStruct {
+  int a;
+  double b;
+  char c;
+  float d;
+};
+</code></pre>
+
+<p>Then, we could define out displacement table as :</p>
+
+<pre><code>MPI_Aint displacements[4] = {
+  offsetof(MyStruct, a),
+  offsetof(MyStruct, b),
+  offsetof(MyStruct, c),
+  offsetof(MyStruct, d)
+};
+</code></pre>
+
+<h3>Exercise</h3>
+
+<p>It's your turn to optimise the program we have made in the previous section. 
+  Use <code>MPI_Type_create_struct</code> to define a derived datatype and commit it so the data can be gathered on process 0. Start with the code in <code>create_struct.cpp</code>. 
+  Your output from the code should be identical to that in <code>create_struct.txt</code>.</p>
+
+<h3>Part 4: MPI Subcommunicators</h3>
+
+<p>In this exercise, you will gain some experience with creating subcommunicators in MPI. 
+  Refer to section 6.4 of the Parallel Programming text for help.</p>
+
+<p>Look at the non-functional code <code>mpi_subcommReduce.cpp</code>. 
+  Complete this code so that <code>MPI_COMM_WORLD</code> is divided into a 2D array of ranks. 
+  Split <code>MPI_COMM_WORLD</code> into a subcommunicator for each row <em>and</em> for each column. 
+  Then, produce sums along each row and column of the process <code>MPI_COMM_WORLD</code> rank numbers. 
+  Run your code for several different total number of ranks and row sizes. 
+  Have rank 0 for each communicator output the result. Verify that it is correct.</p>
+
+<h3>What to turn-in</h3>
+
+<p>To your git project repo, commit your final working code for the above exercises and a concise write-up including all plots, and detailed responses to the questions posed concerning your results.</p>
+
+</main>
+<footer><p><a href="https://tech.msu.edu/technology/accessibility/">Accessibility</a></p></footer>
+</body></html>

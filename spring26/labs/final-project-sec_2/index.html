@@ -1,0 +1,98 @@
+<!DOCTYPE html><html lang="en-us"><head><meta charset="utf-8"><title>Home</title><base href="/spring26/labs/lab10/"><meta content="width=device-width, initial-scale=1" name="viewport"><style>@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-regular.otf") format("opentype");
+    font-weight: regular;
+    font-style: regular;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bold.otf") format("opentype");
+    font-weight: bold;
+    font-style: regular;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-italic.otf") format("opentype");
+    font-weight: regular;
+    font-style: italic;
+}
+@font-face {
+    font-family: "Tex Gyre Heros";
+    src: url("/spring26/assets/font/tex-gyre-heros/texgyreheros-bolditalic.otf") format("opentype");
+    font-weight: bold;
+    font-style: italic;
+}</style><link href="/spring26/assets/main.css" rel="stylesheet">
+<link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" rel="stylesheet">
+<link href="/spring26/assets/favicon.png" rel="icon" type="image/png">
+</head>
+
+<body><header><nav>
+<h1><a href="/spring26/">Home</a></h1>
+<p><a href="/spring26/calendar">Calendar</a></p>
+<p><a href="/spring26/labs">Labs</a></p>
+<p><a href="/spring26/lectures">Lectures</a></p>
+<p><a href="/spring26/syllabus">Syllabus</a></p>
+<p><a href="/spring26/resources">Resources</a></p>
+<p><a href="/spring26/contact">Contact</a></p>
+<p><a href="/spring26/piazza">Piazza</a></p>
+</nav></header>
+
+<main>
+<h2>Section 2: MPI Ping-Pong and Ring Shift</h2>
+
+<h3>Background</h3>
+
+<p>
+The ping-pong problem is a benchmark often used to evaluate the performance of message passing interfaces (MPI) in parallel computing. In this problem, two processes exchange messages back and forth a specified number of times, with each process sending a message and receiving a message alternately. In the ping-pong, process <code>i</code> sends a message of size <code>m</code> to process <code>j</code>, then receives a message of size <code>m</code> back from <code>j</code>. The values of <code>i</code>, <code>j</code>, and <code>m</code> to use are given below.
+</p>
+
+<p>
+The "ring shift" problem is similar to ping-pong. In the MPI ring shift, a group of processes is arranged in a ring, with each process holding a unique subset of a larger array of data. The goal is to shift the data elements by a specified number of positions around the ring, wrapping around the ends of the ring as necessary.
+</p>
+
+<h3>Part 1: Blocking Ping-Pong</h3>
+
+<p>Your task is to implement the ping-pong problem using MPI in C or C++ and analyze the behavior and performance of your code. Specifically, you should:</p>
+
+<ol>
+  <li>Implement the ping-pong problem using MPI in C or C++. Use blocking <code>MPI_Send()</code> and <code>MPI_Recv()</code> calls. You should define the number of iterations and the size of the message to be exchanged.</li>
+
+  <li>Measure the time taken to complete the ping-pong exchange for different message sizes. You should use the <code>MPI_Wtime()</code> function to obtain the time before and after the exchange and calculate the elapsed time. Vary the message size from 2 bytes to 4 kilobytes in powers of 2 (i.e., 2 bytes, 4 bytes, 8 bytes,..., 2048 bytes, 4096 bytes). For each message size, perform 100 iterations of the ping-pong to build up statistical significance.</li>
+
+  <li>Record the total amount of data sent and received during the ping-pong exchange for each configuration.</li>
+
+  <li>Repeat steps 2 and 3 but ensure that the 2 processes that are communicating reside on different physical hardware nodes on HPCC.</li>
+
+  <li>Plot the average communication time of a single exchange (send and receive) as a function of message size for the two cases. Using this plot, estimate the <em>latency</em> and <em>bandwidth</em> for each case. Are they different? Explain your results.</li>
+
+  <li>Analyze and discuss your results. Explain the behavior of the resulting curves.</li>
+</ol>
+
+<h3>Part 2: Non-block Ping-Pong</h3>
+
+<p>Repeat Part 1 using non-blocking MPI communication, i.e., using <code>MPI_Isend()</code> and <code>MPI_Irecv()</code>. You will need to include explicit process synchronization using, e.g., <code>MPI_Wait()</code> calls. Compare the results to the blocking case.</p>
+
+<h3>Part 3: MPI Ring Shift</h3>
+
+<ol>
+  <li>Implement the MPI ring shift in C or C++ for an arbitrary number of processes in the ring and arbitrary message size (i.e., number of elements per process). In your implementation, use <code>MPI_Sendrecv()</code> instead of separate <code>MPI_Send()</code> and <code>MPI_Recv()</code> calls.</li>
+
+  <li>As in Parts 1 and 2, vary the message size from 2 bytes to 4 kb, in powers of 2. Also vary the number of processes used from 2 to <code>N</code>, in powers of 2, where <code>N</code> is sufficiently large that rank 0 and rank <code>N-1</code> are guaranteed to reside on separate nodes (<code>N</code> will depend on which cluster you are using on HPCC).</li>
+
+  <li>Compute the bandwidth and latency, as above. Plot the bandwidth as a function of message size. Include separate lines for each number of processes used.</li>
+
+  <li>Analyze and discuss your results. Explain the behavior of the resulting curves.</li>
+</ol>
+
+<h3>Part 4: Non-blocking MPI Ring Shift</h3>
+
+<p>Repeat Part 3 but using non-blocking communication via <code>MPI_Isend()</code> and <code>MPI_Irecv()</code>. Compare the results to the blocking case.</p>
+
+<h3>What to turn-in</h3>
+
+<p>
+To your git project repo, commit your final working code for the above exercises and a concise write-up including all plots, and detailed responses to the questions posed concerning your results.
+</p>
+</main>
+<footer><p><a href="https://tech.msu.edu/technology/accessibility/">Accessibility</a></p></footer>
+</body></html>

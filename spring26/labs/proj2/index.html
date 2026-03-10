@@ -64,11 +64,6 @@
 <p><strong>Section 3 - Advanced MPI Topics:</strong> Due Thursday, April 30, 12:00 pm.</p>
 </li>
 </ul>
-<h3>Starter Code</h3>
-<p>You can get the starter code for this lab by cloning the <a href="https://github.com/accelerated-computing-class/proj2">lab
-repository</a>:</p>
-<pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">git</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> clone git@github.com:accelerated-computing-class/lab12.git</span>
-</span></pre>
 
 <!--
 <h2>Section 0 (Prelab): Memory Hierarchies and Performance of Serial Applications</h2>
@@ -143,10 +138,7 @@ Then, as a group, compute the arithmetic intensities of the following kernels in
 -->
 
 <h2>Section 0: Getting started with GitHub, the HPCC, and MPI</h2>
-<h2>Section 1: Getting Started with MPI</h2>
-<h3>Goals for This Lab</h3>
 <h3>Part 1: Setup on HPCC</h3>
-
 <p>The following is a very quick tutorial on the basics of using HPCC for this class.</p>
 
 <ol>
@@ -168,20 +160,16 @@ module load intel/2021a</code></pre>
   </li>
 
   <li>
-    When using the HPCC for development and exercises in this class please do NOT just use the head node, <code>dev-amd20</code>. We will swamp the node and no one will get anything done. Instead, request an interactive job using the SLURM scheduler. An easy way to do this is to set up an alias command like so:
-    <pre><code>alias devjob='salloc -n 4 --time 1:30:00'</code></pre>
-  </li>
-
-  <li>
-    Run <code>devjob</code>, then to request 4 tasks for 90 minutes. This should be sufficient for most of the stuff we do during class, though for your projects you will at times require more resources. The above <code>module</code> and <code>alias</code> commands can be added to your <code>.bashrc</code> so that they are automatically executed when you log in.
+    When using the HPCC for development and exercises in this class please do NOT just use the head node, <code>dev-amd20</code>. We will swamp the node and no one will get anything done. Instead, request an interactive job with 4 cores and for 90 minutes using the SLURM scheduler:
+    <pre><code>salloc -n 4 --time 1:30:00</code></pre>
   </li>
 </ol>
 
 <h3>Part 2: MPI Basics</h3>
 
 <ol>
-  <li>Clone your Project 2 repo from GitHub on HPCC.</li>
-
+  <li>
+    Join the classroom with the <a href="https://classroom.github.com/a/Y8AsUmhd">this link</a>. This is our first assignment using GitHub classroom's, so it will ask you to link your GitHub account with your class identifier. 
   <li>
     In the project directory you will find a simple "Hello World!" source file in C++. Compile and run the code. E.g.,
     <pre><code>g++ hello.cpp
@@ -196,13 +184,9 @@ module load intel/2021a</code></pre>
   <li>
     Add the commands <code>MPI_Init</code> and <code>MPI_Finalize</code> to your code. Put three different print statements in your code: one before the init, one between init and finalize, and one after the finalize. Recompile and run the executable, both in serial and with <code>mpiexec</code>, and explain the output.
   </li>
-
-  <li>
-    Complete Exercises 2.3, 2.4, and 2.5 in the 
-    <a href="../assets/EijkhoutParallelProgramming.pdf">Parallel Programming</a> book.
-  </li>
 </ol>
-
+<h2>Section 1: Getting Started with MPI</h2>
+<h3>Goals for This Lab</h3>
 <h3>Part 3: Eat Some Pi</h3>
 
 <p>

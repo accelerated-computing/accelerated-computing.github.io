@@ -38,29 +38,29 @@
 </nav></header>
 
 <main>
-<h1>Section 1: Getting Started with MPI</h1>
-<h3>Goals for This Lab</h3>
-<h3>Part 3: Eat Some Pi</h3>
+<h1>Section 1: Eat Some Pi</h1>
+<p>
+Please <a href="https://classroom.github.com/a/qKdQuPEy">click here</a> to accept the assignment.
+<p>
+Pi is the ratio of a circle's circumference to its diameter. As such, the value of pi can be computed as follows:
+</p>
 
 <p>
-Pi is the ratio of a circle's circumference to its diameter. As such, the value of pi can be computed as follows. 
-Consider a circle of radius <code>r</code> inscribed in a square of side length <code>r</code>. Randomly generate points within the square. 
-Determine the number of points in the square that are also in the circle. 
-If <code>f = nc/ns</code> is the number of points in the circle divided by the number of points in the square then <code>pi</code> can be approximated as <code>pi ~ 4f</code>. 
-Note that the more points generated, the better the approximation.
+Consider a circle of radius <code>r</code> inscribed in a square of side length <code>r</code>. Randomly generate <code>ns</code> points ("darts") within the square. Then, determine the number of points in the square that are also in the circle (<code>nc</code>). 
+If <code>f</code> is the ratio between the number of points in the circle divided by the number of points in the square then--the ratio between the two areas--<code>pi</code> can be approximated as <code>pi ~ 4f</code>. The more points generated, the better the approximation. One benefit ot this <a href="https://en.wikipedia.org/wiki/Monte_Carlo_method">Monte Carlo</a> calculation of Pi is that it's <em>embarrassingly parallel</em>: it requires little to no effort to program a parallel implementation of it. We simply split the computation of Pi across different processors and aggregate their individual estimates. To improve the accuracy of our estimate of Pi, we'll perform several trials and calculate the mean.
 </p>
 
 <ol>
   <li>
-    Look at the C program <code>ser_pi_calc</code>. Extend this program using collective MPI routines to compute <code>pi</code> in parallel using the method described above. Feel free to use C++, if you prefer, of course.
+    Look at the C program <code>ser_pi_calc</code>. Extend this program using collective MPI routines to compute <code>pi</code> in parallel using the method described above.   
   </li>
 
   <li>
-    For the first iteration, perform the same number of "rounds" on each MPI rank. Measure the total runtime using <code>MPI_WTIME()</code>. Vary the number of ranks used from 1 to 4. How does the total runtime change?
+    For the first version of your program, perform the same number of trials on each MPI rank. This is, all ranks will run identical pieces of code. Measure the total runtime using <code>MPI_WTIME()</code>. Vary the number of ranks used from 1 to 4. How does the total runtime change?
   </li>
 
   <li>
-    Now, divide the number of "rounds" up amongst the number of ranks using the appropriate MPI routines to decide how to distribute the work. Again, run the program on 1 to 4 ranks. How does the runtime vary now?
+    Now, you'll coordinate your MPI ranks to divide the number of "rounds" equally among them. Make sure to use the appropriate MPI routines to (1) distribute and (2) communicate the workload across workers. Again, run the program on 1 to 4 ranks. How does the runtime vary now?
   </li>
 
   <li>
@@ -68,11 +68,11 @@ Note that the more points generated, the better the approximation.
   </li>
 
   <li>
-    For each processor count, plot the resulting errors in your computed values of <code>pi</code> compared to the true value as functions of the number of darts used to compute it. Use log-log scaling on this plot. What is the rate of convergence of your algorithm for computing <code>pi</code>? Does this value make sense? Does the error or rate of convergence to the correct answer vary with processor count? Should it?
+    For each processor count, plot the resulting errors in your computed values of <code>pi</code> compared to the true value as functions of the number of darts used to compute it. Use log-log scaling on this plot. What is the rate of convergence of your algorithm for computing <code>pi</code>? Does this value make sense? Does the error or rate of convergence to the correct answer vary with processor count? Should it? Feel free to use the scripting language of your preference to perform this analysis and generate the visualizations.
   </li>
 
   <li>
-    For each dart count, make a plot of runtime versus processor count. Each line represents a "strong scaling" study for your code. For each dart count, also plot the "ideal" scaling line. Calculate the parallel scaling efficiency of your code for each dart count. Does the parallel performance vary with dart count? Explain your answer.
+    For each dart count, make a plot of runtime versus processor count. Each line represents a "strong scaling" study for your code (check out <a href="https://hpc-wiki.info/hpc/Scaling">this resource</a> to learn more about strong and weak scaling). For each dart count, also plot the "ideal" scaling line. Calculate the parallel scaling efficiency of your code for each dart count. Does the parallel performance vary with dart count? Explain your answer.
   </li>
 
   <li>
@@ -83,8 +83,13 @@ Note that the more points generated, the better the approximation.
 <h3>What to turn in</h3>
 
 <p>
-To your git project repo, commit your final working code for the above exercises and a concise write-up including responses to the warm-up exercises, performance and accuracy data for your calculations of <code>pi</code>, the plots made in Part 3, and detailed responses to the questions posed concerning your results.
+To your git project repo, commit your final working code for the above exercises and a concise write-up including:
 </p>
+<ul>
+  <li>Performance and accuracy data for your calculations of pi,</li>
+  <li>The plots you made to visualize the strong and weak scaling,</li> 
+  <li>Detailed responses to the questions.</li>
+</ul>
 
 </main>
 <footer><p><a href="https://tech.msu.edu/technology/accessibility/">Accessibility</a></p></footer>

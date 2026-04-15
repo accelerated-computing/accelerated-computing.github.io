@@ -46,10 +46,10 @@
 <p>For this lab, you’ll be turning in the following deliverables:</p>
 <ul>
 <li>
-<p><strong>Checkpoint:</strong> Due Monday, October 28, 11:59pm (<a href="https://www.gradescope.com/courses/849967/assignments/5224123/">Gradescope</a>)</p>
+<p><strong>Checkpoint:</strong> Due Tuesday, April 21, 11:59 pm</p>
 </li>
 <li>
-<p><strong>Final Submission:</strong> Due Sunday, November 3,  11:59pm (<a href="https://www.gradescope.com/courses/849967/assignments/5241019/">Gradescope</a>)</p>
+<p><strong>Final Submission:</strong> Due Tuesday, April 28,  11:59 pm </p>
 </li>
 </ul>
 <p>See the “Deliverables” section at the end of this document for more information on what you’ll be turning in.</p>
@@ -58,7 +58,7 @@
 <pre><span class="highlight-source highlight-shell highlight-bash"><span class="highlight-meta highlight-function-call highlight-shell"><span class="highlight-variable highlight-function highlight-shell">git</span></span><span class="highlight-meta highlight-function-call highlight-arguments highlight-shell"> clone git@github.com:accelerated-computing-class/lab7.git</span>
 </span></pre>
 <blockquote>
-<p><strong>Update October 28:</strong> The starter code has been updated since its initial release, and now includes the files <a href="https://github.com/accelerated-computing-class/lab7/blob/main/rle_compress.cu"><code>rle_compress.cu</code></a> and <a href="https://github.com/accelerated-computing-class/lab7/blob/main/rle_decompress.cu"><code>rle_decompress.cu</code></a>. If you cloned the repo before this update, please pull the latest commit, or manually copy the new files to your computer:</p>
+<p><strong>Update:</strong> We have updated the files <a href="https://github.com/accelerated-computing-class/lab7/blob/main/rle_compress.cu"><code>rle_compress.cu</code></a> and <a href="https://github.com/accelerated-computing-class/lab7/blob/main/rle_decompress.cu"><code>rle_decompress.cu</code></a>. Please copy the new files manually to your computer:</p>
 <ul>
 <li><a href="https://raw.githubusercontent.com/accelerated-computing-class/lab7/refs/heads/main/rle_compress.cu">Link to raw <code>rle_compress.cu</code></a></li>
 <li><a href="https://raw.githubusercontent.com/accelerated-computing-class/lab7/refs/heads/main/rle_decompress.cu">Link to raw <code>rle_decompress.cu</code></a></li>
@@ -300,11 +300,11 @@ __global__ <span class="highlight-storage highlight-type highlight-c">void</span
 <p><strong>Question 3 for final write-up (optional, extra credit):</strong> What run time were you able to achieve on each benchmark with your run-length decompression implementation? What was your design process like, and what design did you end up adopting? Did you notice any differences between the two benchmarks in terms of what you needed to do to achieve a good run time? Did you encounter any interesting bugs along the way? Do you have any ideas for how you could make your implementation faster?</p>
 </blockquote>
 <h2>Deliverables</h2>
-<h3>Checkpoint (Due Monday, October 28, 2024)</h3>
-<p>For the checkpoint for this lab, we ask that you <strong>see how far you can get</strong> on Part 1. You don’t need to finish your scan implementation, but please try to <strong>get started if you can</strong>, so that in live lab we can spend as much time as possible discussing the most interesting aspects of scan algorithms and run-length compression.</p>
-<p>On the Gradescope assignment “Lab 7 Checkpoint,” (<a href="https://www.gradescope.com/courses/849967/assignments/5224123/">link</a>) submit your answers to the prompts checking in about how you’re doing with the lab.</p>
-<h3>Final Submission (Due Sunday, November 3, 2024)</h3>
-<p>On the Gradescope assignment “Lab 7 Final,” (<a href="https://www.gradescope.com/courses/849967/assignments/5241019/">link</a>) submit your completed code for <code>scan.cu</code> and <code>rle_compress.cu</code>. If you also completed <code>rle_decompress.cu</code>, you can submit that file as well. Additionally, submit your PDF write-up containing your answers to Questions 1 and 2, and optionally include your answer for Question 3.</p>
+<h3>Checkpoint (Due Tuesday, April 21, 2026)</h3>
+<p>For the checkpoint for this lab, we ask that you <strong>see how far you can get</strong> on Part 1. You don’t need to finish your scan implementation, but please <strong>get started</strong>.
+
+<h3>Final Submission (Due Tuesday, April 28, 2026)</h3>
+<p>Submit your completed code for <code>scan.cu</code> and <code>rle_compress.cu</code>. If you also completed <code>rle_decompress.cu</code>, you can submit that file as well. Additionally, submit your PDF write-up containing your answers to Questions 1 and 2, and optionally include your answer for Question 3.</p>
 <hr />
 <div class="footnote-definition" id="monoid"><sup class="footnote-definition-label">1</sup>
 <p>In other words, <code>combine</code> and <code>identity</code> together form a <a href="https://en.wikipedia.org/wiki/Monoid">monoid</a>.</p>
